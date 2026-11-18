@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>지후 님의 데일리 웹 아케이드 (Daily Games Arcade)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #090814;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    min-height: 100vh;
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+    max-width: 600px;
+  }
+  .title {
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00f0ff, #ff007b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #8b9bb4;
+    line-height: 1.5;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    width: 100%;
+    max-width: 720px;
+  }
+  .card {
+    background: rgba(23, 20, 45, 0.75);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: #00f0ff;
+    box-shadow: 0 12px 35px rgba(0, 240, 255, 0.25);
+  }
+  .badge-today {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, #ff007b, #ffbe0b);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px rgba(255, 0, 123, 0.6);
+  }
+  .game-icon {
+    font-size: 44px;
+    margin-bottom: 12px;
+  }
+  .game-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .game-desc {
+    font-size: 13px;
+    color: #a0aec0;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .play-link {
+    display: inline-block;
+    text-align: center;
+    background: linear-gradient(135deg, #00f0ff, #7928ca);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 15px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .play-link:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.7);
+  }
+  .footer {
+    margin-top: 48px;
+    font-size: 12px;
+    color: #4a5568;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">🎮 DAILY GAMES ARCADE</div>
+  <div class="subtitle">지후 님을 위해 매일 아침 8시 배달되는 특별한 웹 게임 컬렉션</div>
+</div>
+
+<div class="grid">
+  <!-- Day 2 (Today) -->
+  <div class="card">
+    <div class="badge-today">TODAY · NEW</div>
+    <div class="game-icon">🏎️</div>
+    <div class="game-name">사이버 하이웨이: 네온 오버드라이브</div>
+    <div class="game-desc">
+      초고속 트래픽 회피 & 니어미스(아슬아슬 추월) 레이싱! 연쇄 콤보로 게이지를 모아 무적의 '오버드라이브'로 라이벌 차량을 시원하게 날려버리세요.
+    </div>
+    <a class="play-link" href="cyber_highway_overdrive.html">지금 플레이하기 ▶</a>
+  </div>
+
+  <!-- Day 1 (Yesterday) -->
+  <div class="card">
+    <div class="game-icon">🛸</div>
+    <div class="game-name">네온 스타 서바이버</div>
+    <div class="game-desc">
+      끝없이 몰려드는 우주 드론을 격파하고 XP 젬을 수집하여 7종의 스킬을 강화하는 탑다운 탄막 액션 로그라이트!
+    </div>
+    <a class="play-link" style="background: linear-gradient(135deg, #ff007b, #7928ca); box-shadow: 0 0 15px rgba(255, 0, 123, 0.4);" href="neon_star_survivor.html">지금 플레이하기 ▶</a>
+  </div>
+</div>
+
+<div class="footer">
+  Created with Pickle · Pure Canvas & Web Audio API
+</div>
+
+</body>
+</html>
