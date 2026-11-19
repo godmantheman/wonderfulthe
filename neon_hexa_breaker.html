@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>네온 헥사 브레이커 (Neon Hexa Breaker)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #080712;
+    color: #f1f5f9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #game-container {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    height: 100vh;
+    max-height: 840px;
+    background: radial-gradient(circle at 50% 30%, #161233 0%, #090716 100%);
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(10, 8, 24, 0.85);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+    z-index: 10;
+  }
+  .stat-box {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: #8a99ad;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stat-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #00f0ff;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-icon {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-icon:active {
+    transform: scale(0.92);
+    background: rgba(0, 240, 255, 0.3);
+  }
+  #speed-btn {
+    color: #ff007b;
+    border-color: rgba(255, 0, 123, 0.4);
+  }
+  canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+  /* Floating / Modal Overlays */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 7, 18, 0.92);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 50;
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .modal-title {
+    font-size: 28px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #00f0ff, #ff007b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .modal-desc {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .perk-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 340px;
+    margin-bottom: 20px;
+  }
+  .perk-card {
+    background: rgba(26, 22, 54, 0.85);
+    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .perk-card:hover, .perk-card:active {
+    background: rgba(38, 30, 80, 0.95);
+    border-color: #00f0ff;
+    transform: translateY(-2px);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+  }
+  .perk-icon {
+    font-size: 28px;
+    width: 40px;
+    text-align: center;
+  }
+  .perk-info h4 {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .perk-info p {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.35;
+  }
+  .btn-main {
+    background: linear-gradient(135deg, #00f0ff, #0077ff);
+    color: #050510;
+    font-size: 16px;
+    font-weight: 800;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 32px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    transition: all 0.2s;
+  }
+  .btn-main:active {
+    transform: scale(0.95);
+  }
+  #recall-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    background: rgba(255, 0, 123, 0.85);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    border: 1px solid #ff007b;
+    border-radius: 20px;
+    padding: 8px 16px;
+    box-shadow: 0 0 15px rgba(255, 0, 123, 0.5);
+    cursor: pointer;
+    z-index: 15;
+    transition: all 0.2s;
+  }
+  #recall-btn:active {
+    transform: scale(0.92);
+  }
+  .danger-line-hint {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, #ff0055, #ff0055 8px, transparent 8px, transparent 16px);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <header>
+    <div class="stat-box">
+      <span class="stat-label">WAVE</span>
+      <span id="wave-val" class="stat-val">1</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">SCORE</span>
+      <span id="score-val" class="stat-val">0</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">BALLS</span>
+      <span id="balls-val" class="stat-val">10</span>
+    </div>
+    <div class="header-actions">
+      <button id="speed-btn" class="btn-icon">1x ▶</button>
+      <button id="audio-btn" class="btn-icon">🔊</button>
+    </div>
+  </header>
+
+  <canvas id="c"></canvas>
+  <div class="danger-line-hint"></div>
+  <button id="recall-btn" class="hidden">⚡ 볼 즉시 회수</button>
+
+  <!-- Start Overlay -->
+  <div id="start-overlay" class="modal-overlay">
+    <h1 class="modal-title">NEON HEXA BREAKER</h1>
+    <p class="modal-desc">
+      화면을 드래그해 각도를 조절하고 발사하세요!<br>
+      튕기는 볼로 네온 블록을 부수고 업그레이드를 획득하세요.<br>
+      블록이 하단 위험선에 닿으면 게임 오버입니다.
+    </p>
+    <button id="start-btn" class="btn-main">게임 시작 🎮</button>
+  </div>
+
+  <!-- Level Up Perk Overlay -->
+  <div id="perk-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title">⚡ WAVE CLEAR REWARD</h2>
+    <p class="modal-desc">새로운 업그레이드를 하나 선택하세요!</p>
+    <div id="perk-list" class="perk-cards"></div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="gameover-overlay" class="modal-overlay hidden">
+    <h2 class="modal-title" style="background: linear-gradient(135deg, #ff0055, #ff7700); -webkit-background-clip: text;">GAME OVER</h2>
+    <p class="modal-desc" id="gameover-stats"></p>
+    <button id="restart-btn" class="btn-main">다시 도전 🔄</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // --- Audio System (Web Audio API) ---
+  let audioCtx = null;
+  let isMuted = false;
+  function getAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  const PENTATONIC = [
+    261.63, 293.66, 329.63, 392.00, 440.00,
+    523.25, 587.33, 659.25, 783.99, 880.00,
+    1046.50, 1174.66, 1318.51, 1567.98, 1760.00
+  ];
+
+  function playBounceSound(combo) {
+    if (isMuted) return;
+    try {
+      const ctx = getAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const idx = Math.min(combo, PENTATONIC.length - 1);
+      const freq = PENTATONIC[idx];
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch(e) {}
+  }
+
+  function playExplodeSound() {
+    if (isMuted) return;
+    try {
+      const ctx = getAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch(e) {}
+  }
+
+  function playLaserSound() {
+    if (isMuted) return;
+    try {
+      const ctx = getAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch(e) {}
+  }
+
+  function playPerkSound() {
+    if (isMuted) return;
+    try {
+      const ctx = getAudio();
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.25);
+      });
+    } catch(e) {}
+  }
+
+  // --- Canvas & Core Variables ---
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const container = document.getElementById('game-container');
+
+  let width = 400;
+  let height = 600;
+  let dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = rect.width;
+    height = rect.height;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  window.addEventListener('resize', resize);
+
+  // --- Game State ---
+  let state = 'start'; // start, aiming, shooting, perk, gameover
+  let wave = 1;
+  let score = 0;
+  let highscore = parseInt(localStorage.getItem('neon_hexa_breaker_hs') || '0', 10);
+  let speedMultiplier = 1;
+
+  let baseBallCount = 10;
+  let balls = [];
+  let launcherPos = { x: 200, y: 550 };
+  let nextLauncherX = null;
+  let aimStart = null;
+  let aimDir = null; // {x, y}
+  let isDragging = false;
+  let shootTimer = 0;
+  let ballsToLaunch = 0;
+  let launchInterval = 4;
+  let launchCounter = 0;
+  let launchDir = { x: 0, y: -1 };
+  let activeBallsCount = 0;
+  let turnStartTime = 0;
+  let roundCombo = 0;
+
+  // Blocks & Grid
+  const COLS = 7;
+  let cellWidth = 0;
+  let cellHeight = 0;
+  let blocks = [];
+  let particles = [];
+  let floatingTexts = [];
+  let screenShake = 0;
+
+  // Roguelite Perks
+  const perks = {
+    plasmaAura: 0,      // splash damage on hit
+    chainLightning: 0,  // % chance to arc to adjacent blocks
+    heavyBall: 0,       // bigger ball & 2x dmg
+    penetrateLaser: 0,  // first ball shoots laser
+    freezeFrost: 0,     // freeze block for 1 turn
+    critSpark: 0,       // 25% chance for 3x crit
+    splitMissile: 0     // spawns homing shrapnel on kill
+  };
+
+  const ALL_PERKS = [
+    { id: 'plasmaAura', icon: '💥', name: '플라즈마 오라', desc: '공이 튕길 때마다 주변 35px 범위에 방사 대미지' },
+    { id: 'chainLightning', icon: '⚡', name: '체인 라이트닝', desc: '30% 확률로 인접한 3개 블록에 전격 연쇄' },
+    { id: 'heavyBall', icon: '☄️', name: '헤비 볼터', desc: '공 크기 +30% 및 기본 타격력 2배 증가' },
+    { id: 'penetrateLaser', icon: '💫', name: '하이퍼 레이저', desc: '매 턴 첫 번째 공이 전방 전체 관통 레이저 발사' },
+    { id: 'freezeFrost', icon: '❄️', name: '서리 동결', desc: '타격 시 20% 확률로 블록을 1턴간 얼려 전진 정지' },
+    { id: 'critSpark', icon: '✨', name: '치명타 스파크', desc: '25% 확률로 3배 크리티컬 대미지 & 황금 폭발' },
+    { id: 'splitMissile', icon: '🚀', name: '파편 미사일', desc: '블록 파괴 시 사방으로 유도 파편 탄환 4발 분출' },
+    { id: 'addBalls', icon: '🔮', name: '에너지 볼 충전', desc: '즉시 볼 개수 +5개 영구 추가' }
+  ];
+
+  // DOM Elements
+  const waveVal = document.getElementById('wave-val');
+  const scoreVal = document.getElementById('score-val');
+  const ballsVal = document.getElementById('balls-val');
+  const speedBtn = document.getElementById('speed-btn');
+  const audioBtn = document.getElementById('audio-btn');
+  const recallBtn = document.getElementById('recall-btn');
+  const startOverlay = document.getElementById('start-overlay');
+  const perkOverlay = document.getElementById('perk-overlay');
+  const perkList = document.getElementById('perk-list');
+  const gameoverOverlay = document.getElementById('gameover-overlay');
+  const gameoverStats = document.getElementById('gameover-stats');
+  const startBtn = document.getElementById('start-btn');
+  const restartBtn = document.getElementById('restart-btn');
+
+  // --- Speed Button ---
+  speedBtn.addEventListener('click', () => {
+    if (speedMultiplier === 1) speedMultiplier = 2;
+    else if (speedMultiplier === 2) speedMultiplier = 3;
+    else speedMultiplier = 1;
+    speedBtn.textContent = speedMultiplier + 'x ▶';
+  });
+
+  // --- Audio Button ---
+  audioBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    audioBtn.textContent = isMuted ? '🔇' : '🔊';
+  });
+
+  // --- Recall Button ---
+  recallBtn.addEventListener('click', () => {
+    balls.forEach(b => {
+      b.returning = true;
+      b.vx = (launcherPos.x - b.x) * 0.15;
+      b.vy = (launcherPos.y - b.y) * 0.15;
+    });
+  });
+
+  // --- Init Game ---
+  function initGame() {
+    wave = 1;
+    score = 0;
+    baseBallCount = 10;
+    speedMultiplier = 1;
+    speedBtn.textContent = '1x ▶';
+    balls = [];
+    blocks = [];
+    particles = [];
+    floatingTexts = [];
+    nextLauncherX = null;
+    launcherPos = { x: width / 2, y: height - 50 };
+
+    Object.keys(perks).forEach(k => perks[k] = 0);
+
+    updateUI();
+    spawnRow();
+    state = 'aiming';
+  }
+
+  function updateUI() {
+    waveVal.textContent = wave;
+    scoreVal.textContent = score;
+    ballsVal.textContent = baseBallCount;
+  }
+
+  // --- Spawning Blocks ---
+  function spawnRow() {
+    cellWidth = (width - 20) / COLS;
+    cellHeight = 44;
+
+    // Shift existing blocks down
+    blocks.forEach(b => {
+      if (!b.frozen) {
+        b.row++;
+        b.targetY = 20 + b.row * (cellHeight + 6);
+      } else {
+        b.frozen = false; // thaw after 1 turn
+      }
+    });
+
+    // Check Game Over
+    const dangerY = height - 70;
+    for (let b of blocks) {
+      if (b.type !== 'item' && b.targetY >= dangerY) {
+        triggerGameOver();
+        return;
+      }
+    }
+
+    // Spawn new row at row = 0
+    let placedCount = 0;
+    for (let col = 0; col < COLS; col++) {
+      const rand = Math.random();
+      const x = 10 + col * cellWidth + cellWidth / 2;
+      const y = 20;
+
+      if (rand < 0.55) {
+        // Normal / Special Block
+        let hp = wave;
+        if (Math.random() < 0.25) hp = Math.ceil(wave * 1.8);
+
+        let type = 'normal';
+        const typeRoll = Math.random();
+        if (typeRoll < 0.08) type = 'bomb';
+        else if (typeRoll < 0.16) type = 'laser';
+
+        blocks.push({
+          col,
+          row: 0,
+          x,
+          y: -cellHeight,
+          targetY: 20,
+          w: cellWidth - 6,
+          h: cellHeight,
+          hp,
+          maxHp: hp,
+          type,
+          frozen: false,
+          color: getBlockColor(hp)
+        });
+        placedCount++;
+      } else if (rand < 0.72) {
+        // Power-up Item (+ Ball or x2 Multiplier)
+        const isMultiplier = Math.random() < 0.3;
+        blocks.push({
+          col,
+          row: 0,
+          x,
+          y: -cellHeight,
+          targetY: 20,
+          w: cellWidth - 10,
+          h: cellHeight - 6,
+          type: 'item',
+          itemType: isMultiplier ? 'mult' : 'ball',
+          hp: 1,
+          color: isMultiplier ? '#ff007b' : '#00f0ff'
+        });
+        placedCount++;
+      }
+    }
+
+    // Ensure at least one block per row
+    if (placedCount === 0) {
+      blocks.push({
+        col: 3,
+        row: 0,
+        x: 10 + 3 * cellWidth + cellWidth / 2,
+        y: -cellHeight,
+        targetY: 20,
+        w: cellWidth - 6,
+        h: cellHeight,
+        hp: wave,
+        maxHp: wave,
+        type: 'normal',
+        frozen: false,
+        color: getBlockColor(wave)
+      });
+    }
+  }
+
+  function getBlockColor(hp) {
+    if (hp <= 3) return '#00f0ff';
+    if (hp <= 8) return '#00ff88';
+    if (hp <= 18) return '#ffe600';
+    if (hp <= 35) return '#ff7700';
+    return '#ff0055';
+  }
+
+  // --- Aiming & Input ---
+  function getTouchPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      x: (touch.clientX - rect.left),
+      y: (touch.clientY - rect.top)
+    };
+  }
+
+  canvas.addEventListener('mousedown', onPointerDown);
+  canvas.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('mouseup', onPointerUp);
+
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onPointerMove(e); }, { passive: false });
+  window.addEventListener('touchend', (e) => { onPointerUp(e); });
+
+  function onPointerDown(e) {
+    if (state !== 'aiming') return;
+    const p = getTouchPos(e);
+    isDragging = true;
+    aimStart = p;
+    updateAimDir(p);
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging || state !== 'aiming') return;
+    const p = getTouchPos(e);
+    updateAimDir(p);
+  }
+
+  function updateAimDir(p) {
+    let dx = p.x - launcherPos.x;
+    let dy = p.y - launcherPos.y;
+
+    // Invert drag if pulling downwards (slingshot feel) or aiming towards screen
+    if (p.y > launcherPos.y) {
+      dx = -dx;
+      dy = -dy;
+    }
+
+    const dist = Math.hypot(dx, dy);
+    if (dist > 20 && dy < -10) {
+      aimDir = { x: dx / dist, y: dy / dist };
+    } else {
+      aimDir = null;
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    if (state === 'aiming' && aimDir) {
+      launchTurn(aimDir);
+      aimDir = null;
+    }
+  }
+
+  // --- Launch Turn ---
+  function launchTurn(dir) {
+    state = 'shooting';
+    launchDir = dir;
+    ballsToLaunch = baseBallCount;
+    launchCounter = 0;
+    activeBallsCount = 0;
+    balls = [];
+    nextLauncherX = null;
+    roundCombo = 0;
+    turnStartTime = Date.now();
+    recallBtn.classList.remove('hidden');
+
+    // Perk: Penetrate Laser
+    if (perks.penetrateLaser > 0) {
+      fireHyperLaser(launcherPos.x, launcherPos.y, dir);
+    }
+  }
+
+  function fireHyperLaser(x, y, dir) {
+    playLaserSound();
+    addScreenShake(8);
+    // Raycast through blocks along laser dir
+    let lx = x, ly = y;
+    for (let i = 0; i < 40; i++) {
+      lx += dir.x * 20;
+      ly += dir.y * 20;
+      if (lx < 0 || lx > width || ly < 0) break;
+      for (let b of blocks) {
+        if (b.type !== 'item' && Math.hypot(lx - b.x, ly - (b.y + b.h/2)) < b.w/2) {
+          hitBlock(b, wave * 2);
+        }
+      }
+    }
+    // Visual beam particle
+    particles.push({
+      type: 'laser',
+      x1: x, y1: y,
+      x2: lx, y2: ly,
+      life: 15, maxLife: 15,
+      color: '#00f0ff'
+    });
+  }
+
+  // --- Ball Physics & Game Loop ---
+  function createBall(x, y, dir) {
+    const radius = perks.heavyBall > 0 ? 6.5 : 4.5;
+    const speed = 12;
+    return {
+      x,
+      y,
+      vx: dir.x * speed,
+      vy: dir.y * speed,
+      radius,
+      active: true,
+      returning: false,
+      dmg: perks.heavyBall > 0 ? 2 : 1
+    };
+  }
+
+  function update() {
+    const steps = speedMultiplier * 2;
+    for (let s = 0; s < steps; s++) {
+      innerUpdate();
+    }
+  }
+
+  function innerUpdate() {
+    // Spawning stream of balls
+    if (state === 'shooting' && ballsToLaunch > 0) {
+      launchCounter++;
+      if (launchCounter >= launchInterval) {
+        launchCounter = 0;
+        balls.push(createBall(launcherPos.x, launcherPos.y, launchDir));
+        ballsToLaunch--;
+        activeBallsCount++;
+      }
+    }
+
+    // Auto-show recall button after 4 seconds
+    if (state === 'shooting' && Date.now() - turnStartTime > 4000) {
+      recallBtn.classList.remove('hidden');
+    }
+
+    // Update Balls
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+      if (!b.active) continue;
+
+      if (b.returning) {
+        b.x += b.vx;
+        b.y += b.vy;
+        if (Math.hypot(b.x - launcherPos.x, b.y - launcherPos.y) < 15) {
+          b.active = false;
+          activeBallsCount--;
+        }
+        continue;
+      }
+
+      b.x += b.vx;
+      b.y += b.vy;
+
+      // Wall bounce
+      if (b.x - b.radius < 5) {
+        b.x = 5 + b.radius;
+        b.vx = Math.abs(b.vx);
+        playBounceSound(roundCombo++);
+      } else if (b.x + b.radius > width - 5) {
+        b.x = width - 5 - b.radius;
+        b.vx = -Math.abs(b.vx);
+        playBounceSound(roundCombo++);
+      }
+      if (b.y - b.radius < 5) {
+        b.y = 5 + b.radius;
+        b.vy = Math.abs(b.vy);
+        playBounceSound(roundCombo++);
+      }
+
+      // Bottom boundary (landing)
+      if (b.y + b.radius >= height - 40) {
+        b.active = false;
+        activeBallsCount--;
+        if (nextLauncherX === null) {
+          nextLauncherX = Math.max(20, Math.min(width - 20, b.x));
+        }
+        continue;
+      }
+
+      // Block Collisions
+      checkBlockCollisions(b);
+    }
+
+    // End of Shooting Turn Check
+    if (state === 'shooting' && ballsToLaunch === 0 && activeBallsCount <= 0) {
+      endTurn();
+    }
+
+    // Animate blocks descending
+    blocks.forEach(b => {
+      b.y += (b.targetY - b.y) * 0.15;
+    });
+
+    // Screen Shake decay
+    if (screenShake > 0) screenShake *= 0.9;
+  }
+
+  function checkBlockCollisions(ball) {
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const blk = blocks[i];
+      const left = blk.x - blk.w / 2;
+      const right = blk.x + blk.w / 2;
+      const top = blk.y;
+      const bottom = blk.y + blk.h;
+
+      // Circle to Box intersection
+      const closestX = Math.max(left, Math.min(ball.x, right));
+      const closestY = Math.max(top, Math.min(ball.y, bottom));
+      const dist = Math.hypot(ball.x - closestX, ball.y - closestY);
+
+      if (dist < ball.radius) {
+        // Collision response
+        if (blk.type === 'item') {
+          // Collect item
+          collectItem(blk);
+          blocks.splice(i, 1);
+          continue;
+        }
+
+        // Damage Calculation & Perks
+        let dmg = ball.dmg;
+        let isCrit = false;
+        if (perks.critSpark > 0 && Math.random() < 0.25) {
+          dmg *= 3;
+          isCrit = true;
+          addFloatingText(blk.x, blk.y, 'CRIT x3!', '#ffe600');
+        }
+
+        hitBlock(blk, dmg, isCrit);
+        playBounceSound(roundCombo++);
+
+        // Perk: Plasma Aura (Splash)
+        if (perks.plasmaAura > 0) {
+          splashDamage(blk.x, blk.y, 40, Math.ceil(dmg * 0.5));
+        }
+
+        // Perk: Chain Lightning
+        if (perks.chainLightning > 0 && Math.random() < 0.3) {
+          chainLightning(blk, Math.ceil(dmg * 0.7));
+        }
+
+        // Perk: Frost Freeze
+        if (perks.freezeFrost > 0 && Math.random() < 0.2) {
+          blk.frozen = true;
+          addFloatingText(blk.x, blk.y, 'FROZEN ❄️', '#00f0ff');
+        }
+
+        // Determine Bounce Normal
+        const overlapX = ball.radius - Math.abs(ball.x - closestX);
+        const overlapY = ball.radius - Math.abs(ball.y - closestY);
+
+        if (overlapX < overlapY) {
+          ball.vx = ball.x < closestX ? -Math.abs(ball.vx) : Math.abs(ball.vx);
+        } else {
+          ball.vy = ball.y < closestY ? -Math.abs(ball.vy) : Math.abs(ball.vy);
+        }
+
+        // Micro repositioning to prevent sticking
+        ball.x += ball.vx * 0.2;
+        ball.y += ball.vy * 0.2;
+        break;
+      }
+    }
+  }
+
+  function hitBlock(blk, dmg, isCrit = false) {
+    blk.hp -= dmg;
+    score += dmg * 10;
+    updateUI();
+
+    createHitParticles(blk.x, blk.y + blk.h / 2, blk.color, isCrit ? 12 : 5);
+
+    if (blk.hp <= 0) {
+      destroyBlock(blk);
+    } else {
+      blk.color = getBlockColor(blk.hp);
+    }
+  }
+
+  function destroyBlock(blk) {
+    const idx = blocks.indexOf(blk);
+    if (idx !== -1) blocks.splice(idx, 1);
+
+    playExplodeSound();
+    addScreenShake(4);
+    createExplosionParticles(blk.x, blk.y + blk.h / 2, blk.color);
+
+    // Special Block Effects
+    if (blk.type === 'bomb') {
+      triggerBombExplosion(blk.x, blk.y + blk.h / 2);
+    } else if (blk.type === 'laser') {
+      triggerLaserBlock(blk.col, blk.row);
+    }
+
+    // Perk: Split Missile
+    if (perks.splitMissile > 0) {
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 2) {
+        balls.push({
+          x: blk.x,
+          y: blk.y + blk.h / 2,
+          vx: Math.cos(angle) * 10,
+          vy: Math.sin(angle) * 10,
+          radius: 3.5,
+          active: true,
+          returning: false,
+          dmg: 2
+        });
+        activeBallsCount++;
+      }
+    }
+  }
+
+  function collectItem(item) {
+    if (item.itemType === 'ball') {
+      baseBallCount++;
+      addFloatingText(item.x, item.y, '+1 BALL 🔮', '#00f0ff');
+      createHitParticles(item.x, item.y, '#00f0ff', 10);
+    } else if (item.itemType === 'mult') {
+      // Duplicate current balls
+      const len = balls.length;
+      for (let i = 0; i < Math.min(len, 15); i++) {
+        const b = balls[i];
+        if (b.active && !b.returning) {
+          balls.push({
+            x: b.x,
+            y: b.y,
+            vx: -b.vx + (Math.random() - 0.5) * 2,
+            vy: b.vy,
+            radius: b.radius,
+            active: true,
+            returning: false,
+            dmg: b.dmg
+          });
+          activeBallsCount++;
+        }
+      }
+      addFloatingText(item.x, item.y, 'x2 MULTI! 💥', '#ff007b');
+    }
+    updateUI();
+  }
+
+  function splashDamage(x, y, radius, dmg) {
+    blocks.forEach(b => {
+      if (b.type !== 'item') {
+        const dist = Math.hypot(x - b.x, y - (b.y + b.h / 2));
+        if (dist <= radius) {
+          hitBlock(b, dmg);
+        }
+      }
+    });
+    particles.push({
+      type: 'shockwave',
+      x, y, radius: 10, maxRadius: radius,
+      color: '#ff007b', life: 10, maxLife: 10
+    });
+  }
+
+  function chainLightning(sourceBlk, dmg) {
+    let targets = blocks.filter(b => b !== sourceBlk && b.type !== 'item')
+      .sort((a, b) => Math.hypot(sourceBlk.x - a.x, sourceBlk.y - b.y) - Math.hypot(sourceBlk.x - b.x, sourceBlk.y - b.y))
+      .slice(0, 3);
+
+    targets.forEach(t => {
+      hitBlock(t, dmg);
+      particles.push({
+        type: 'lightning',
+        x1: sourceBlk.x, y1: sourceBlk.y + sourceBlk.h / 2,
+        x2: t.x, y2: t.y + t.h / 2,
+        color: '#00f0ff', life: 8, maxLife: 8
+      });
+    });
+  }
+
+  function triggerBombExplosion(x, y) {
+    playExplodeSound();
+    addScreenShake(12);
+    splashDamage(x, y, 90, wave * 2);
+    addFloatingText(x, y, 'BOOM! 💣', '#ff0055');
+  }
+
+  function triggerLaserBlock(col, row) {
+    playLaserSound();
+    addScreenShake(8);
+    // Destroy or heavily damage entire col and row
+    blocks.forEach(b => {
+      if (b.type !== 'item' && (b.col === col || b.row === row)) {
+        hitBlock(b, wave * 2);
+      }
+    });
+    addFloatingText(10 + col * cellWidth + cellWidth / 2, 20 + row * (cellHeight + 6), 'LASER CROSS! ⚡', '#ffe600');
+  }
+
+  function addScreenShake(amount) {
+    screenShake = Math.min(screenShake + amount, 20);
+  }
+
+  // --- End Turn & Wave Progression ---
+  function endTurn() {
+    state = 'aiming';
+    recallBtn.classList.add('hidden');
+    if (nextLauncherX !== null) {
+      launcherPos.x = nextLauncherX;
+    }
+
+    wave++;
+    updateUI();
+
+    // Show Combo Floating Text if high
+    if (roundCombo >= 30) {
+      addFloatingText(width / 2, height / 2, `COMBO x${roundCombo}! 🔥`, '#ffe600');
+    }
+
+    // Level up perk every 5 waves
+    if (wave % 5 === 0) {
+      showPerkSelection();
+    } else {
+      spawnRow();
+    }
+  }
+
+  // --- Roguelite Perk Selection ---
+  function showPerkSelection() {
+    state = 'perk';
+    playPerkSound();
+    perkList.innerHTML = '';
+
+    // Pick 3 random distinct perks
+    const shuffled = [...ALL_PERKS].sort(() => 0.5 - Math.random()).slice(0, 3);
+    shuffled.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'perk-card';
+      card.innerHTML = `
+        <div class="perk-icon">${p.icon}</div>
+        <div class="perk-info">
+          <h4>${p.name}</h4>
+          <p>${p.desc}</p>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        applyPerk(p.id);
+        perkOverlay.classList.add('hidden');
+        spawnRow();
+        state = 'aiming';
+      });
+      perkList.appendChild(card);
+    });
+
+    perkOverlay.classList.remove('hidden');
+  }
+
+  function applyPerk(id) {
+    if (id === 'addBalls') {
+      baseBallCount += 5;
+    } else {
+      perks[id] = (perks[id] || 0) + 1;
+    }
+    updateUI();
+  }
+
+  // --- Game Over ---
+  function triggerGameOver() {
+    state = 'gameover';
+    playExplodeSound();
+    if (score > highscore) {
+      highscore = score;
+      localStorage.setItem('neon_hexa_breaker_hs', highscore);
+    }
+    gameoverStats.innerHTML = `
+      최종 도달 웨이브: <strong style="color:#00f0ff;">WAVE ${wave}</strong><br>
+      최종 점수: <strong style="color:#ffe600;">${score.toLocaleString()} P</strong><br>
+      최고 기록: <strong>${highscore.toLocaleString()} P</strong>
+    `;
+    gameoverOverlay.classList.remove('hidden');
+  }
+
+  // --- Visuals & Drawing ---
+  function draw() {
+    ctx.save();
+
+    // Apply Screen Shake
+    if (screenShake > 0.5) {
+      const shakeX = (Math.random() - 0.5) * screenShake;
+      const shakeY = (Math.random() - 0.5) * screenShake;
+      ctx.translate(shakeX, shakeY);
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw Subtle Grid
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 30) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 30) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+    }
+
+    // Draw Danger Line
+    const dangerY = height - 70;
+    ctx.strokeStyle = 'rgba(255, 0, 85, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, dangerY);
+    ctx.lineTo(width, dangerY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw Blocks
+    blocks.forEach(b => {
+      ctx.save();
+      if (b.type === 'item') {
+        // Item Orb
+        ctx.fillStyle = b.color;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y + b.h / 2, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#080712';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.itemType === 'ball' ? '+1' : 'x2', b.x, b.y + b.h / 2);
+      } else {
+        // Hex / Rounded Box
+        ctx.fillStyle = b.frozen ? 'rgba(0, 240, 255, 0.25)' : 'rgba(26, 22, 54, 0.85)';
+        ctx.strokeStyle = b.frozen ? '#00f0ff' : b.color;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = b.type === 'bomb' ? 16 : 8;
+
+        const left = b.x - b.w / 2;
+        const top = b.y;
+        roundRect(ctx, left, top, b.w, b.h, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner Icon or HP
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (b.type === 'bomb') {
+          ctx.font = '16px sans-serif';
+          ctx.fillText('💣', b.x, b.y + b.h / 2 - 4);
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillText(b.hp, b.x, b.y + b.h / 2 + 10);
+        } else if (b.type === 'laser') {
+          ctx.font = '16px sans-serif';
+          ctx.fillText('⚡', b.x, b.y + b.h / 2 - 4);
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillText(b.hp, b.x, b.y + b.h / 2 + 10);
+        } else {
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText(b.hp, b.x, b.y + b.h / 2);
+        }
+      }
+      ctx.restore();
+    });
+
+    // Draw Aim Trajectory
+    if (state === 'aiming' && aimDir) {
+      drawTrajectory(launcherPos.x, launcherPos.y, aimDir);
+    }
+
+    // Draw Launcher
+    ctx.save();
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(launcherPos.x, launcherPos.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Launcher Base ring
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(launcherPos.x, launcherPos.y, 16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw Balls
+    balls.forEach(b => {
+      if (!b.active) return;
+      ctx.save();
+      ctx.fillStyle = perks.heavyBall > 0 ? '#ffe600' : '#00f0ff';
+      ctx.shadowColor = perks.heavyBall > 0 ? '#ffe600' : '#00f0ff';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // Draw Particles
+    drawParticles();
+
+    // Draw Floating Texts
+    drawFloatingTexts();
+
+    ctx.restore();
+  }
+
+  function drawTrajectory(startX, startY, dir) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 6]);
+
+    let cx = startX;
+    let cy = startY;
+    let dx = dir.x;
+    let dy = dir.y;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+
+    // Raycast simulation for trajectory (1 bounce)
+    for (let step = 0; step < 2; step++) {
+      let tWall = Infinity;
+      let hitWall = 'none';
+
+      // Left / Right walls
+      if (dx < 0) {
+        const t = (10 - cx) / dx;
+        if (t > 0 && t < tWall) { tWall = t; hitWall = 'left'; }
+      } else if (dx > 0) {
+        const t = (width - 10 - cx) / dx;
+        if (t > 0 && t < tWall) { tWall = t; hitWall = 'right'; }
+      }
+      // Top wall
+      if (dy < 0) {
+        const t = (10 - cy) / dy;
+        if (t > 0 && t < tWall) { tWall = t; hitWall = 'top'; }
+      }
+
+      // Check block raycast
+      let tBlock = Infinity;
+      for (let b of blocks) {
+        if (b.type === 'item') continue;
+        const left = b.x - b.w / 2;
+        const right = b.x + b.w / 2;
+        const top = b.y;
+        const bottom = b.y + b.h;
+
+        // Simple AABB ray intersection
+        const tMinX = (left - cx) / dx;
+        const tMaxX = (right - cx) / dx;
+        const tMinY = (top - cy) / dy;
+        const tMaxY = (bottom - cy) / dy;
+
+        const tEnter = Math.max(Math.min(tMinX, tMaxX), Math.min(tMinY, tMaxY));
+        const tExit = Math.min(Math.max(tMinX, tMaxX), Math.max(tMinY, tMaxY));
+
+        if (tExit >= tEnter && tEnter > 0 && tEnter < tBlock) {
+          tBlock = tEnter;
+        }
+      }
+
+      const tHit = Math.min(tWall, tBlock);
+      if (!isFinite(tHit)) break;
+
+      cx += dx * tHit;
+      cy += dy * tHit;
+      ctx.lineTo(cx, cy);
+
+      if (tBlock < tWall) {
+        // Hit block: stop trajectory
+        break;
+      }
+
+      // Bounce off wall
+      if (hitWall === 'left' || hitWall === 'right') dx = -dx;
+      if (hitWall === 'top') dy = -dy;
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  // --- Particles & FX ---
+  function createHitParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 4 + 1;
+      particles.push({
+        type: 'spark',
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: Math.random() * 3 + 1,
+        life: 18,
+        maxLife: 18
+      });
+    }
+  }
+
+  function createExplosionParticles(x, y, color) {
+    for (let i = 0; i < 24; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 7 + 2;
+      particles.push({
+        type: 'spark',
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: Math.random() * 4 + 2,
+        life: 25,
+        maxLife: 25
+      });
+    }
+  }
+
+  function addFloatingText(x, y, text, color) {
+    floatingTexts.push({
+      x, y,
+      text,
+      color,
+      life: 30,
+      maxLife: 30
+    });
+  }
+
+  function drawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life--;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      const alpha = p.life / p.maxLife;
+      if (p.type === 'spark') {
+        p.x += p.vx;
+        p.y += p.vy;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'shockwave') {
+        p.radius += (p.maxRadius - p.radius) * 0.25;
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (p.type === 'lightning') {
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(p.x1, p.y1);
+        const midX = (p.x1 + p.x2) / 2 + (Math.random() - 0.5) * 20;
+        const midY = (p.y1 + p.y2) / 2 + (Math.random() - 0.5) * 20;
+        ctx.lineTo(midX, midY);
+        ctx.lineTo(p.x2, p.y2);
+        ctx.stroke();
+      } else if (p.type === 'laser') {
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 8 * alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.moveTo(p.x1, p.y1);
+        ctx.lineTo(p.x2, p.y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawFloatingTexts() {
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+      const ft = floatingTexts[i];
+      ft.life--;
+      ft.y -= 1.2;
+      if (ft.life <= 0) {
+        floatingTexts.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = ft.color;
+      ctx.globalAlpha = ft.life / ft.maxLife;
+      ctx.shadowColor = ft.color;
+      ctx.shadowBlur = 8;
+      ctx.textAlign = 'center';
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.restore();
+    }
+  }
+
+  // --- Main Animation Frame ---
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // --- Buttons / Event Listeners ---
+  startBtn.addEventListener('click', () => {
+    getAudio();
+    startOverlay.classList.add('hidden');
+    initGame();
+  });
+
+  restartBtn.addEventListener('click', () => {
+    gameoverOverlay.classList.add('hidden');
+    initGame();
+  });
+
+  // Start Loop
+  resize();
+  loop();
+})();
+</script>
+</body>
+</html>
