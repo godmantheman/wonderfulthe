@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>네온 사이버 핀볼: 오버드라이브 (Neon Cyber Pinball)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100dvh; overflow: hidden;
+    background: #060612;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  .app {
+    width: 100%; height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    background: radial-gradient(circle at 50% 25%, #161136 0%, #060612 72%);
+  }
+  .hud {
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 6px;
+  }
+  .hud-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    background: rgba(16, 18, 42, 0.9);
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  }
+  .pill.score { border-color: rgba(0, 240, 255, 0.55); color: #00f0ff; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .pill.mult { border-color: rgba(255, 190, 11, 0.55); color: #ffbe0b; }
+  .pill.balls { border-color: rgba(255, 0, 123, 0.5); color: #ff6aa8; }
+  .pill.stage { border-color: rgba(184, 77, 255, 0.5); color: #d896ff; }
+  .icon-btn {
+    background: rgba(20, 24, 52, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #cbd5e1;
+    border-radius: 10px;
+    padding: 6px 9px;
+    font-size: 13px; font-weight: 800;
+    cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(0.95); }
+
+  .stage-wrap {
+    position: relative;
+    flex: 1; min-height: 0;
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 4px 0;
+  }
+  canvas {
+    display: block;
+    max-width: 100%; max-height: 100%;
+    border-radius: 16px;
+    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    box-shadow: 0 0 28px rgba(0, 240, 255, 0.16), inset 0 0 24px rgba(121, 40, 202, 0.2);
+    background: #08091b;
+    cursor: pointer;
+  }
+
+  .controls-bar {
+    width: 100%; max-width: 480px;
+    display: grid; grid-template-columns: 1.35fr 0.8fr 1.35fr; gap: 8px;
+    padding: 2px 4px;
+  }
+  .ctrl-btn {
+    background: linear-gradient(180deg, rgba(24, 30, 68, 0.96), rgba(13, 16, 38, 0.98));
+    border: 1.5px solid rgba(0, 240, 255, 0.36);
+    border-radius: 13px;
+    color: #e2e8f0;
+    padding: 12px 8px;
+    font-size: 14px; font-weight: 800;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+    transition: transform 0.06s, border-color 0.1s, box-shadow 0.1s;
+  }
+  .ctrl-btn.active, .ctrl-btn:active {
+    transform: translateY(1px) scale(0.98);
+    border-color: #00f0ff;
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.45);
+    background: linear-gradient(180deg, rgba(0, 240, 255, 0.22), rgba(16, 22, 54, 0.98));
+  }
+  .ctrl-btn.launch {
+    border-color: rgba(255, 0, 123, 0.55);
+    color: #ff8bc2;
+  }
+  .ctrl-btn.launch.active, .ctrl-btn.launch:active {
+    border-color: #ff007b;
+    box-shadow: 0 0 18px rgba(255, 0, 123, 0.5);
+  }
+  .ctrl-sub { font-size: 10px; color: #94a3b8; font-weight: 700; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(5, 6, 16, 0.84);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    width: 100%; max-width: 400px;
+    background: linear-gradient(160deg, rgba(20, 22, 52, 0.98), rgba(10, 11, 28, 0.99));
+    border: 1.5px solid rgba(0, 240, 255, 0.45);
+    border-radius: 20px;
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px; font-weight: 900; letter-spacing: 0.8px;
+    color: #00f0ff;
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    padding: 4px 10px; border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .modal h1 {
+    font-size: 24px; font-weight: 900; margin-bottom: 8px;
+    background: linear-gradient(135deg, #00f0ff, #ff007b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .modal p { font-size: 13px; color: #cbd5e1; line-height: 1.55; margin-bottom: 14px; }
+  .guide-list {
+    text-align: left; font-size: 12px; color: #cbd5e1; line-height: 1.6;
+    background: rgba(8, 10, 26, 0.72);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+  }
+  .guide-list b { color: #00f0ff; }
+  .best-line { font-size: 13px; font-weight: 800; color: #ffbe0b; margin-bottom: 14px; }
+  .primary-btn {
+    width: 100%; border: none; border-radius: 13px;
+    padding: 14px; font-size: 16px; font-weight: 900; color: #fff;
+    background: linear-gradient(135deg, #00f0ff, #7928ca 60%, #ff007b);
+    box-shadow: 0 0 22px rgba(0, 240, 255, 0.45);
+    cursor: pointer;
+  }
+  .primary-btn:active { transform: scale(0.98); }
+
+  .perk-grid {
+    display: flex; flex-direction: column; gap: 10px; margin-top: 8px;
+  }
+  .perk-card {
+    text-align: left;
+    background: rgba(15, 19, 46, 0.95);
+    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    border-radius: 14px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  .perk-card:hover, .perk-card:active {
+    transform: translateY(-2px);
+    border-color: #ffbe0b;
+    box-shadow: 0 0 18px rgba(255, 190, 11, 0.3);
+  }
+  .perk-title { font-size: 14px; font-weight: 900; color: #fff; margin-bottom: 3px; }
+  .perk-desc { font-size: 12px; color: #94a3b8; line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="hud">
+    <div class="hud-group">
+      <div class="pill score">★ <span id="scoreVal">0</span></div>
+      <div class="pill mult" id="multPill">x1</div>
+      <div class="pill stage" id="stagePill">BOSS 1</div>
+    </div>
+    <div class="hud-group">
+      <div class="pill balls" id="ballsPill">● 3</div>
+      <button class="icon-btn" id="soundBtn" title="효과음">🔊</button>
+      <button class="icon-btn" id="pauseBtn" title="일시정지">⏸</button>
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <canvas id="table" width="440" height="760"></canvas>
+  </div>
+
+  <div class="controls-bar">
+    <button class="ctrl-btn" id="leftBtn">
+      <span>◀ 왼쪽 플리퍼</span>
+      <span class="ctrl-sub">A / ← / Z</span>
+    </button>
+    <button class="ctrl-btn launch" id="launchBtn">
+      <span id="launchLabel">🚀 발사</span>
+      <span class="ctrl-sub" id="launchSub">Space / 길게</span>
+    </button>
+    <button class="ctrl-btn" id="rightBtn">
+      <span>오른쪽 플리퍼 ▶</span>
+      <span class="ctrl-sub">D / → / /</span>
+    </button>
+  </div>
+</div>
+
+<!-- Start / Game Over Overlay -->
+<div class="overlay" id="startOverlay">
+  <div class="modal">
+    <div class="badge">DAY 7 · CYBER PINBALL ROGUELITE</div>
+    <h1 id="modalTitle">네온 사이버 핀볼</h1>
+    <p id="modalDesc">범퍼 연쇄 콤보와 3타겟 멀티볼로 거대 사이버 코어 보스를 격파하는 아케이드 로그라이트 핀볼!</p>
+    <div class="guide-list" id="guideList">
+      1. <b>발사 (Space / 가운데 버튼)</b>: 길게 눌러 파워 조절 후 떼어 슈팅!<br>
+      2. <b>플리퍼 (←/→, A/D, 좌우 버튼)</b>: 화면 좌/우 터치로도 조작 가능!<br>
+      3. <b>C·Y·B 타겟</b> 3개 점등 시 <b>멀티볼(공 +2)</b> 발동!<br>
+      4. <b>보스 코어 격파</b>마다 3종 <b>사이버 모듈(강화)</b> 선택 & <b>넛지(↑)</b> 지원!
+    </div>
+    <div class="best-line" id="bestLine">최고 기록: 0점</div>
+    <button class="primary-btn" id="startBtn">핀볼 테이블 가동 ▶</button>
+  </div>
+</div>
+
+<!-- Roguelite Upgrade Overlay -->
+<div class="overlay hidden" id="perkOverlay">
+  <div class="modal">
+    <div class="badge" style="color:#ffbe0b;border-color:rgba(255,190,11,0.45);background:rgba(255,190,11,0.12);">BOSS SHATTERED!</div>
+    <h1 id="perkTitle">사이버 모듈 선택</h1>
+    <p id="perkSubtitle">테이블을 영구 강화할 1개의 업그레이드를 장착하세요!</p>
+    <div class="perk-grid" id="perkGrid"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('table');
+  const ctx = canvas.getContext('2d');
+  const W = 440, H = 760;
+
+  // UI elements
+  const scoreValEl = document.getElementById('scoreVal');
+  const multPillEl = document.getElementById('multPill');
+  const stagePillEl = document.getElementById('stagePill');
+  const ballsPillEl = document.getElementById('ballsPill');
+  const soundBtn = document.getElementById('soundBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+  const launchBtn = document.getElementById('launchBtn');
+  const launchLabel = document.getElementById('launchLabel');
+  const launchSub = document.getElementById('launchSub');
+  const startOverlay = document.getElementById('startOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalDesc = document.getElementById('modalDesc');
+  const bestLine = document.getElementById('bestLine');
+  const startBtn = document.getElementById('startBtn');
+  const perkOverlay = document.getElementById('perkOverlay');
+  const perkGrid = document.getElementById('perkGrid');
+  const perkTitle = document.getElementById('perkTitle');
+
+  const BEST_KEY = 'neon_cyber_pinball_best_v1';
+  let bestScore = Number(localStorage.getItem(BEST_KEY) || '0');
+  bestLine.textContent = `최고 기록: ${bestScore.toLocaleString()}점`;
+
+  // Web Audio Synth
+  let audioCtx = null;
+  let soundOn = true;
+  const PENTATONIC = [392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+
+  function ensureAudio() {
+    if (!soundOn) return null;
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    return audioCtx;
+  }
+
+  function playTone(freq, type = 'sine', dur = 0.08, gainVal = 0.11, slideTo = null) {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), now + dur);
+    g.gain.setValueAtTime(gainVal, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g); g.connect(ac.destination);
+    osc.start(now); osc.stop(now + dur);
+  }
+
+  function playFlipperSfx() { playTone(180, 'triangle', 0.055, 0.12, 340); }
+  function playLaunchSfx(power) { playTone(160 + power * 180, 'sawtooth', 0.18, 0.14, 620); }
+  function playBumperSfx(combo) {
+    const f = PENTATONIC[combo % PENTATONIC.length];
+    playTone(f, 'triangle', 0.14, 0.14, f * 1.15);
+  }
+  function playSlingshotSfx() { playTone(280, 'square', 0.07, 0.09, 520); }
+  function playBossHitSfx() {
+    playTone(130, 'sawtooth', 0.11, 0.14, 75);
+    playTone(460, 'sine', 0.09, 0.08, 290);
+  }
+  function playBossKillSfx() {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'triangle', 0.22, 0.14), i * 65);
+    });
+  }
+  function playMultiballSfx() {
+    [440, 554.37, 659.25, 880, 1108.73].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'sawtooth', 0.16, 0.12), i * 50);
+    });
+  }
+  function playDrainSfx() { playTone(220, 'sawtooth', 0.35, 0.13, 60); }
+
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊' : '🔇';
+    if (soundOn) ensureAudio();
+  });
+
+  // Table Geometry Constants
+  const LANE_X = 406;        // Shooter lane center
+  const LANE_WALL_X = 386;   // Divider between main playfield and shooter lane
+  const PLAY_RIGHT = 386;
+  const PLAY_LEFT = 18;
+  const PLAY_TOP = 18;
+  const BALL_R = 10.5;
+  const GRAVITY = 720;       // px/s^2
+  const SUBSTEPS = 8;
+
+  // Flippers (pivots near bottom center)
+  const LEFT_PIVOT = { x: 124, y: 676 };
+  const RIGHT_PIVOT = { x: 280, y: 676 };
+  const FLIPPER_LEN = 66;
+  const FLIPPER_R_BASE = 9.5;
+  const FLIPPER_R_TIP = 6;
+
+  // Game State
+  let running = false;
+  let paused = false;
+  let score = 0;
+  let ballsLeft = 3;
+  let multiplier = 1;
+  let comboCount = 0;
+  let comboTimer = 0;
+  let stage = 1;
+  let boss = null;
+  let ballSaverTimer = 0;
+  let centerShieldHits = 0;
+  let centerShieldMax = 0;
+  let nudgeCooldown = 0;
+  let shakeTimer = 0;
+  let shakeMag = 0;
+
+  // Upgrades state
+  let ballDmgMult = 1;
+  let scoreMultBonus = 0;
+  let bumperChain = false;
+  let magnetPull = false;
+  let multiballSize = 2;
+  let slingshotPower = 1;
+
+  // Controls
+  let leftPressed = false;
+  let rightPressed = false;
+  let plungerCharging = false;
+  let plungerCharge = 0; // 0..1
+
+  let leftAngle = 0.44;
+  let leftPrevAngle = 0.44;
+  let rightAngle = Math.PI - 0.44;
+  let rightPrevAngle = Math.PI - 0.44;
+
+  // Entities
+  let balls = [];
+  let particles = [];
+  let popups = [];
+  let lightningArcs = [];
+
+  // Static walls (segments [x1,y1,x2,y2, rest, tag])
+  const walls = [
+    // Outer left & bottom-left funnel
+    [PLAY_LEFT, 130, PLAY_LEFT, 560, 0.55, 'wall'],
+    [PLAY_LEFT, 560, 82, 636, 0.55, 'wall'],
+    [82, 636, LEFT_PIVOT.x, LEFT_PIVOT.y, 0.45, 'inlane'],
+    // Right playfield boundary below shooter exit
+    [PLAY_RIGHT, 178, PLAY_RIGHT, 560, 0.55, 'wall'],
+    [PLAY_RIGHT, 560, 322, 636, 0.55, 'wall'],
+    [322, 636, RIGHT_PIVOT.x, RIGHT_PIVOT.y, 0.45, 'inlane'],
+    // Shooter lane right outer wall & bottom floor
+    [426, 128, 426, 728, 0.4, 'wall'],
+    [386, 728, 426, 728, 0.2, 'floor'],
+    // Left guide rail above inlane (creates slingshot channel feel)
+    [54, 495, 54, 558, 0.6, 'rail'],
+    [54, 558, 108, 616, 0.6, 'rail'],
+    // Right guide rail
+    [350, 495, 350, 558, 0.6, 'rail'],
+    [350, 558, 296, 616, 0.6, 'rail'],
+    // Top left deflector
+    [18, 130, 56, 72, 0.7, 'wall'],
+    [56, 72, 128, 30, 0.7, 'wall'],
+    // Top arch curving from shooter lane (x=426) over top into main field
+    [128, 30, 232, 18, 0.7, 'arch'],
+    [232, 18, 324, 30, 0.7, 'arch'],
+    [324, 30, 386, 66, 0.7, 'arch'],
+    [386, 66, 426, 128, 0.65, 'arch'],
+    // Inner top shooter curve guide (leaves gap 125..178 for ball to enter playfield)
+    [386, 178, 386, 728, 0.5, 'divider']
+  ];
+
+  // Slingshot triangles (bouncy diagonals above flippers!)
+  const slingshots = [
+    { x1: 72, y1: 500, x2: 112, y2: 594, nx: 0.92, ny: -0.39, flash: 0 },
+    { x1: 332, y1: 500, x2: 292, y2: 594, nx: -0.92, ny: -0.39, flash: 0 }
+  ];
+
+  // Neon Bumpers
+  const bumpers = [
+    { x: 132, y: 175, r: 24, color: '#00f0ff', pts: 150, flash: 0 },
+    { x: 272, y: 175, r: 24, color: '#ff007b', pts: 150, flash: 0 },
+    { x: 202, y: 122, r: 22, color: '#ffbe0b', pts: 200, flash: 0 },
+    { x: 100, y: 272, r: 19, color: '#b84dff', pts: 120, flash: 0 },
+    { x: 304, y: 272, r: 19, color: '#00ff9d', pts: 120, flash: 0 }
+  ];
+
+  // Drop Targets for Multiball (C, Y, B)
+  const dropTargets = [
+    { x: 34, y: 318, w: 12, h: 36, label: 'C', lit: false, color: '#00f0ff', flash: 0 },
+    { x: 34, y: 364, w: 12, h: 36, label: 'Y', lit: false, color: '#ffbe0b', flash: 0 },
+    { x: 34, y: 410, w: 12, h: 36, label: 'B', lit: false, color: '#ff007b', flash: 0 }
+  ];
+
+  // Right-side Ramp/Multiplier Targets (x1 -> x2 -> x3 -> x5)
+  const rightTargets = [
+    { x: 358, y: 318, w: 12, h: 36, label: '2X', lit: false, color: '#b84dff', flash: 0 },
+    { x: 358, y: 364, w: 12, h: 36, label: '3X', lit: false, color: '#00ff9d', flash: 0 },
+    { x: 358, y: 410, w: 12, h: 36, label: '⚡', lit: false, color: '#00f0ff', flash: 0 }
+  ];
+
+  // Spinner in upper-left lane
+  const spinner = { x: 64, y: 214, w: 34, spinVel: 0, angle: 0 };
+
+  function spawnBoss(lv) {
+    const names = ['SENTINEL CORE', 'HYDRA PRISM', 'VOID REACTOR', 'CHRONO AEGIS', 'OMEGA NEXUS'];
+    const colors = ['#ff007b', '#b84dff', '#ffbe0b', '#00f0ff', '#00ff9d'];
+    const hp = 80 + (lv - 1) * 55;
+    boss = {
+      level: lv,
+      name: names[(lv - 1) % names.length],
+      color: colors[(lv - 1) % colors.length],
+      x: 202,
+      y: 266,
+      r: 32,
+      hp: hp,
+      maxHp: hp,
+      flash: 0,
+      phase: 0
+    };
+    stagePillEl.textContent = `BOSS ${lv}`;
+  }
+
+  function spawnShooterBall() {
+    balls.push({
+      x: LANE_X,
+      y: 690,
+      vx: 0,
+      vy: 0,
+      inShooter: true,
+      trail: [],
+      powerFlash: 0
+    });
+  }
+
+  function addPopup(x, y, text, color = '#00f0ff', size = 14) {
+    popups.push({ x, y, text, color, size, life: 0.85, maxLife: 0.85 });
+  }
+
+  function spawnBurst(x, y, color, count = 12, spd = 190) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = (0.3 + Math.random() * 0.7) * spd;
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        r: 1.8 + Math.random() * 2.5,
+        color,
+        life: 0.35 + Math.random() * 0.3,
+        maxLife: 0.65
+      });
+    }
+  }
+
+  function triggerShake(mag, dur = 0.16) {
+    shakeMag = Math.max(shakeMag, mag);
+    shakeTimer = Math.max(shakeTimer, dur);
+  }
+
+  function addScore(pts, x, y, labelColor = '#00f0ff') {
+    const totalMult = multiplier + scoreMultBonus;
+    const gained = Math.round(pts * totalMult);
+    score += gained;
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem(BEST_KEY, String(bestScore));
+    }
+    scoreValEl.textContent = score.toLocaleString();
+    if (x != null && gained >= 100) {
+      addPopup(x, y, `+${gained.toLocaleString()}`, labelColor, gained >= 800 ? 17 : 13);
+    }
+    return gained;
+  }
+
+  function updateHud() {
+    scoreValEl.textContent = score.toLocaleString();
+    multPillEl.textContent = `x${multiplier + scoreMultBonus}`;
+    ballsPillEl.textContent = `● ${ballsLeft}`;
+    stagePillEl.textContent = `BOSS ${stage}`;
+    const hasShooterBall = balls.some(b => b.inShooter);
+    if (hasShooterBall) {
+      launchLabel.textContent = '🚀 발사';
+      launchSub.textContent = '길게 누르고 떼기';
+    } else {
+      launchLabel.textContent = nudgeCooldown > 0 ? `⚡ ${Math.ceil(nudgeCooldown)}s` : '⚡ 넛지';
+      launchSub.textContent = '테이블 흔들기';
+    }
+  }
+
+  // Roguelite Perks Pool
+  const PERKS = [
+    {
+      id: 'plasma_core',
+      title: '🔥 플라즈마 코어 (공격력 +50%)',
+      desc: '모든 볼의 보스 타격 피해가 50% 영구 증가하고 점수 배율 +1!',
+      apply: () => { ballDmgMult += 0.5; scoreMultBonus += 1; }
+    },
+    {
+      id: 'shield_bar',
+      title: '🛡️ 센터 배리어 실드 (3회 방어)',
+      desc: '플리퍼 사이 중앙 배수구를 막아주는 에너지 실드를 즉시 3회 충전합니다.',
+      apply: () => { centerShieldMax = Math.max(centerShieldMax, 3); centerShieldHits = centerShieldMax; }
+    },
+    {
+      id: 'chain_arc',
+      title: '⚡ 체인 범퍼 아크',
+      desc: '범퍼를 칠 때마다 보스에게 번개 아크(추가 12 피해)를 즉시 방출합니다!',
+      apply: () => { bumperChain = true; }
+    },
+    {
+      id: 'extra_ball',
+      title: '❤️ 스페어 볼 +1 & 즉시 멀티볼',
+      desc: '남은 공 +1개 추가, 그리고 지금 테이블에 공을 즉시 1개 더 투하합니다!',
+      apply: () => {
+        ballsLeft += 1;
+        balls.push({ x: 202, y: 90, vx: (Math.random() - 0.5) * 180, vy: 80, inShooter: false, trail: [], powerFlash: 1 });
+      }
+    },
+    {
+      id: 'hyper_sling',
+      title: '💥 하이퍼 슬링샷 & 배수 +1',
+      desc: '슬링샷과 범퍼 반발력이 25% 강화되고 기본 점수 배율이 +1 증가합니다.',
+      apply: () => { slingshotPower += 0.25; scoreMultBonus += 1; }
+    },
+    {
+      id: 'overdrive_multi',
+      title: '☄️ 멀티볼 확장 (+1 볼)',
+      desc: 'C·Y·B 타겟 완성 시 소환되는 멀티볼 개수가 +1개 늘어나고 세이버 10초 발동!',
+      apply: () => { multiballSize += 1; ballSaverTimer = Math.max(ballSaverTimer, 10); }
+    },
+    {
+      id: 'magnet_core',
+      title: '🧲 보스 자성 추적',
+      desc: '볼이 보스 근처를 지날 때 코어 쪽으로 살짝 끌어당겨 명중률이 크게 올라갑니다.',
+      apply: () => { magnetPull = true; }
+    }
+  ];
+
+  function openPerkChoice() {
+    paused = true;
+    const pool = [...PERKS].sort(() => Math.random() - 0.5).slice(0, 3);
+    perkTitle.textContent = `BOSS ${stage - 1} 격파! 모듈 선택`;
+    perkGrid.innerHTML = '';
+    pool.forEach(p => {
+      const card = document.createElement('button');
+      card.className = 'perk-card';
+      card.innerHTML = `<div class="perk-title">${p.title}</div><div class="perk-desc">${p.desc}</div>`;
+      card.addEventListener('click', () => {
+        p.apply();
+        perkOverlay.classList.add('hidden');
+        paused = false;
+        playMultiballSfx();
+        addPopup(202, 220, 'MODULE ONLINE!', '#ffbe0b', 18);
+        updateHud();
+      });
+      perkGrid.appendChild(card);
+    });
+    perkOverlay.classList.remove('hidden');
+  }
+
+  function resetGame() {
+    score = 0;
+    ballsLeft = 3;
+    multiplier = 1;
+    comboCount = 0;
+    comboTimer = 0;
+    stage = 1;
+    ballSaverTimer = 0;
+    centerShieldHits = 1; // 1 starter shield to feel forgiving
+    centerShieldMax = 1;
+    nudgeCooldown = 0;
+    ballDmgMult = 1;
+    scoreMultBonus = 0;
+    bumperChain = false;
+    magnetPull = false;
+    multiballSize = 2;
+    slingshotPower = 1;
+    balls = [];
+    particles = [];
+    popups = [];
+    lightningArcs = [];
+    dropTargets.forEach(t => { t.lit = false; t.flash = 0; });
+    rightTargets.forEach(t => { t.lit = false; t.flash = 0; });
+    spawnBoss(1);
+    spawnShooterBall();
+    updateHud();
+    running = true;
+    paused = false;
+  }
+
+  // Geometry collision helpers
+  function closestPointOnSeg(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return { x: x1, y: y1, t: 0 };
+    let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    return { x: x1 + t * dx, y: y1 + t * dy, t };
+  }
+
+  function collideCircleSegment(b, x1, y1, x2, y2, segRadius, restitution, extraVel = 0) {
+    const cp = closestPointOnSeg(b.x, b.y, x1, y1, x2, y2);
+    const dx = b.x - cp.x, dy = b.y - cp.y;
+    const dist = Math.hypot(dx, dy);
+    const minD = BALL_R + segRadius;
+    if (dist < minD && dist > 0.0001) {
+      const nx = dx / dist, ny = dy / dist;
+      const overlap = minD - dist;
+      b.x += nx * overlap;
+      b.y += ny * overlap;
+      const vn = b.vx * nx + b.vy * ny;
+      if (vn < 0) {
+        b.vx -= (1 + restitution) * vn * nx;
+        b.vy -= (1 + restitution) * vn * ny;
+        if (extraVel > 0) {
+          b.vx += nx * extraVel;
+          b.vy += ny * extraVel;
+        }
+        return { hit: true, nx, ny, t: cp.t, x: cp.x, y: cp.y };
+      }
+    }
+    return { hit: false };
+  }
+
+  function activateMultiball(originX, originY) {
+    playMultiballSfx();
+    triggerShake(9, 0.25);
+    addPopup(202, 195, 'MULTIBALL OVERDRIVE!', '#ffbe0b', 19);
+    ballSaverTimer = Math.max(ballSaverTimer, 12);
+    addScore(1500, originX, originY, '#ffbe0b');
+    for (let i = 0; i < multiballSize; i++) {
+      if (balls.length >= 6) break;
+      balls.push({
+        x: 170 + i * 32,
+        y: 95,
+        vx: (i % 2 === 0 ? -1 : 1) * (140 + Math.random() * 90),
+        vy: 60 + Math.random() * 60,
+        inShooter: false,
+        trail: [],
+        powerFlash: 1
+      });
+    }
+    updateHud();
+  }
+
+  function damageBoss(dmg, hitX, hitY) {
+    if (!boss) return;
+    boss.hp -= dmg;
+    boss.flash = 1;
+    playBossHitSfx();
+    triggerShake(6, 0.14);
+    spawnBurst(hitX, hitY, boss.color, 14, 220);
+    addScore(250, boss.x, boss.y - 36, boss.color);
+
+    if (boss.hp <= 0) {
+      playBossKillSfx();
+      triggerShake(14, 0.35);
+      spawnBurst(boss.x, boss.y, boss.color, 40, 320);
+      spawnBurst(boss.x, boss.y, '#ffbe0b', 24, 260);
+      addScore(2500 * stage, boss.x, boss.y, '#ffbe0b');
+      stage += 1;
+      spawnBoss(stage);
+      openPerkChoice();
+    }
+    updateHud();
+  }
+
+  function launchShooterBalls(power) {
+    let launched = false;
+    const speed = 980 + power * 520;
+    for (const b of balls) {
+      if (b.inShooter && b.y > 620) {
+        b.vy = -speed;
+        b.vx = (Math.random() - 0.5) * 8;
+        launched = true;
+      }
+    }
+    if (launched) {
+      playLaunchSfx(power);
+      ballSaverTimer = Math.max(ballSaverTimer, 12);
+      spawnBurst(LANE_X, 695, '#00f0ff', 12, 160);
+    }
+  }
+
+  function doNudge() {
+    if (!running || paused || nudgeCooldown > 0) return;
+    const active = balls.filter(b => !b.inShooter);
+    if (!active.length) return;
+    nudgeCooldown = 4.0;
+    triggerShake(7, 0.18);
+    playTone(140, 'triangle', 0.12, 0.12, 220);
+    for (const b of active) {
+      b.vy -= 140;
+      b.vx += (Math.random() - 0.5) * 190;
+    }
+    addPopup(202, 520, '⚡ NUDGE!', '#00f0ff', 15);
+    updateHud();
+  }
+
+  // Physics Step
+  function stepPhysics(dt) {
+    if (paused) return;
+
+    if (ballSaverTimer > 0) ballSaverTimer = Math.max(0, ballSaverTimer - dt);
+    if (nudgeCooldown > 0) {
+      const prev = Math.ceil(nudgeCooldown);
+      nudgeCooldown = Math.max(0, nudgeCooldown - dt);
+      if (Math.ceil(nudgeCooldown) !== prev) updateHud();
+    }
+    if (comboTimer > 0) {
+      comboTimer -= dt;
+      if (comboTimer <= 0) comboCount = 0;
+    }
+    if (shakeTimer > 0) {
+      shakeTimer = Math.max(0, shakeTimer - dt);
+      if (shakeTimer === 0) shakeMag = 0;
+    }
+
+    // Plunger charge
+    if (plungerCharging) {
+      plungerCharge = Math.min(1, plungerCharge + dt * 1.45);
+    }
+
+    // Flipper angle motion
+    const flipUpSpeed = 24;
+    const flipDownSpeed = 14;
+    const L_REST = 0.44, L_UP = -0.52;
+    const R_REST = Math.PI - 0.44, R_UP = Math.PI + 0.52;
+
+    leftPrevAngle = leftAngle;
+    rightPrevAngle = rightAngle;
+
+    if (leftPressed) leftAngle = Math.max(L_UP, leftAngle - flipUpSpeed * dt);
+    else leftAngle = Math.min(L_REST, leftAngle + flipDownSpeed * dt);
+
+    if (rightPressed) rightAngle = Math.min(R_UP, rightAngle + flipUpSpeed * dt);
+    else rightAngle = Math.max(R_REST, rightAngle - flipDownSpeed * dt);
+
+    const leftAngVel = (leftAngle - leftPrevAngle) / dt;
+    const rightAngVel = (rightAngle - rightPrevAngle) / dt;
+
+    // Fade flashes
+    bumpers.forEach(bp => bp.flash = Math.max(0, bp.flash - dt * 5));
+    slingshots.forEach(s => s.flash = Math.max(0, s.flash - dt * 6));
+    dropTargets.forEach(t => t.flash = Math.max(0, t.flash - dt * 5));
+    rightTargets.forEach(t => t.flash = Math.max(0, t.flash - dt * 5));
+    if (boss) {
+      boss.flash = Math.max(0, boss.flash - dt * 5);
+      boss.phase += dt * 2.5;
+    }
+    if (spinner.spinVel > 0) {
+      spinner.angle += spinner.spinVel * dt;
+      spinner.spinVel = Math.max(0, spinner.spinVel - dt * 18);
+    }
+
+    // Sub-step balls
+    const subDt = dt / SUBSTEPS;
+    for (let s = 0; s < SUBSTEPS; s++) {
+      for (const b of balls) {
+        b.vy += GRAVITY * subDt;
+
+        // Boss magnetic pull perk
+        if (magnetPull && !b.inShooter && boss) {
+          const dx = boss.x - b.x, dy = boss.y - b.y;
+          const d = Math.hypot(dx, dy);
+          if (d > boss.r + BALL_R && d < 155) {
+            b.vx += (dx / d) * 320 * subDt;
+            b.vy += (dy / d) * 320 * subDt;
+          }
+        }
+
+        // Cap max speed
+        const spd = Math.hypot(b.vx, b.vy);
+        if (spd > 1450) {
+          b.vx = (b.vx / spd) * 1450;
+          b.vy = (b.vy / spd) * 1450;
+        }
+
+        b.x += b.vx * subDt;
+        b.y += b.vy * subDt;
+
+        // Transition out of shooter lane once above divider
+        if (b.inShooter && b.x < LANE_WALL_X - BALL_R) {
+          b.inShooter = false;
+        }
+
+        // One-way gate preventing re-entry into shooter lane from playfield
+        if (!b.inShooter && b.y < 178 && b.x + BALL_R > LANE_WALL_X && b.vx > 0 && b.y > 55) {
+          b.x = LANE_WALL_X - BALL_R;
+          b.vx = -Math.abs(b.vx) * 0.7;
+        }
+
+        // Wall collisions
+        for (const w of walls) {
+          // Skip shooter floor for active balls (they aren't there anyway)
+          collideCircleSegment(b, w[0], w[1], w[2], w[3], 2.5, w[4]);
+        }
+
+        // Keep inside outer bounding safety
+        if (b.x < PLAY_LEFT + BALL_R) { b.x = PLAY_LEFT + BALL_R; b.vx = Math.abs(b.vx) * 0.6; }
+        if (b.x > 426 - BALL_R) { b.x = 426 - BALL_R; b.vx = -Math.abs(b.vx) * 0.6; }
+        if (b.y < PLAY_TOP + BALL_R) { b.y = PLAY_TOP + BALL_R; b.vy = Math.abs(b.vy) * 0.7; }
+
+        // Flippers
+        const flippers = [
+          { px: LEFT_PIVOT.x, py: LEFT_PIVOT.y, ang: leftAngle, angVel: leftAngVel },
+          { px: RIGHT_PIVOT.x, py: RIGHT_PIVOT.y, ang: rightAngle, angVel: rightAngVel }
+        ];
+        for (const fl of flippers) {
+          const tx = fl.px + Math.cos(fl.ang) * FLIPPER_LEN;
+          const ty = fl.py + Math.sin(fl.ang) * FLIPPER_LEN;
+          const cp = closestPointOnSeg(b.x, b.y, fl.px, fl.py, tx, ty);
+          const flR = FLIPPER_R_BASE + (FLIPPER_R_TIP - FLIPPER_R_BASE) * cp.t;
+          const dx = b.x - cp.x, dy = b.y - cp.y;
+          const dist = Math.hypot(dx, dy);
+          const minD = BALL_R + flR;
+          if (dist < minD && dist > 0.0001) {
+            const nx = dx / dist, ny = dy / dist;
+            b.x += nx * (minD - dist);
+            b.y += ny * (minD - dist);
+
+            // Surface velocity from flipper rotation
+            const rx = cp.x - fl.px, ry = cp.y - fl.py;
+            const surfVx = -fl.angVel * ry;
+            const surfVy = fl.angVel * rx;
+            const relVx = b.vx - surfVx;
+            const relVy = b.vy - surfVy;
+            const relVn = relVx * nx + relVy * ny;
+
+            if (relVn < 0) {
+              const rest = Math.abs(fl.angVel) > 1 ? 0.75 : 0.42;
+              b.vx -= (1 + rest) * relVn * nx;
+              b.vy -= (1 + rest) * relVn * ny;
+              // Extra upward snap when actively flipping
+              if (Math.abs(fl.angVel) > 3 && ny < -0.1) {
+                const kick = 260 + cp.t * 360;
+                b.vx += nx * kick * 0.65;
+                b.vy += ny * kick;
+                spawnBurst(cp.x, cp.y, '#00f0ff', 5, 130);
+              }
+            }
+          }
+        }
+
+        // Slingshots
+        for (const sl of slingshots) {
+          const res = collideCircleSegment(b, sl.x1, sl.y1, sl.x2, sl.y2, 3, 0.9, 280 * slingshotPower);
+          if (res.hit && s === 0) {
+            sl.flash = 1;
+            playSlingshotSfx();
+            addScore(80, res.x, res.y, '#00ff9d');
+            spawnBurst(res.x, res.y, '#00ff9d', 8, 170);
+          }
+        }
+
+        // Center Shield Barrier
+        if (centerShieldHits > 0 && !b.inShooter) {
+          const res = collideCircleSegment(b, 174, 718, 230, 718, 4, 1.05, 320);
+          if (res.hit) {
+            centerShieldHits -= 1;
+            playSlingshotSfx();
+            triggerShake(5, 0.12);
+            spawnBurst(res.x, res.y, '#00f0ff', 14, 210);
+            addPopup(202, 700, centerShieldHits > 0 ? `SHIELD (${centerShieldHits})` : 'SHIELD BROKEN!', '#00f0ff', 13);
+          }
+        }
+
+        // Bumpers
+        for (const bp of bumpers) {
+          const dx = b.x - bp.x, dy = b.y - bp.y;
+          const dist = Math.hypot(dx, dy);
+          const minD = BALL_R + bp.r;
+          if (dist < minD && dist > 0.0001) {
+            const nx = dx / dist, ny = dy / dist;
+            b.x = bp.x + nx * minD;
+            b.y = bp.y + ny * minD;
+            const kickSpeed = Math.max(460, Math.hypot(b.vx, b.vy) * 1.05) * slingshotPower;
+            b.vx = nx * Math.min(780, kickSpeed);
+            b.vy = ny * Math.min(780, kickSpeed);
+            bp.flash = 1;
+            comboCount += 1;
+            comboTimer = 2.4;
+            playBumperSfx(comboCount);
+            triggerShake(3.5, 0.08);
+            spawnBurst(bp.x + nx * bp.r, bp.y + ny * bp.r, bp.color, 10, 200);
+            addScore(bp.pts, bp.x, bp.y - bp.r, bp.color);
+            if (bumperChain && boss) {
+              lightningArcs.push({ x1: bp.x, y1: bp.y, x2: boss.x, y2: boss.y, life: 0.16, color: bp.color });
+              damageBoss(12 * ballDmgMult, boss.x, boss.y);
+            }
+          }
+        }
+
+        // Boss Core collision
+        if (boss && !b.inShooter) {
+          const dx = b.x - boss.x, dy = b.y - boss.y;
+          const dist = Math.hypot(dx, dy);
+          const minD = BALL_R + boss.r;
+          if (dist < minD && dist > 0.0001) {
+            const nx = dx / dist, ny = dy / dist;
+            b.x = boss.x + nx * minD;
+            b.y = boss.y + ny * minD;
+            const spdOut = Math.max(430, Math.hypot(b.vx, b.vy) * 1.02);
+            b.vx = nx * Math.min(760, spdOut);
+            b.vy = ny * Math.min(760, spdOut);
+            const dmg = Math.round((16 + Math.min(20, spdOut * 0.02)) * ballDmgMult);
+            damageBoss(dmg, boss.x + nx * boss.r, boss.y + ny * boss.r);
+          }
+        }
+
+        // Left Drop Targets (C-Y-B -> Multiball)
+        for (const t of dropTargets) {
+          const res = collideCircleSegment(b, t.x + t.w / 2, t.y, t.x + t.w / 2, t.y + t.h, t.w / 2, 0.9, 120);
+          if (res.hit) {
+            t.flash = 1;
+            if (!t.lit) {
+              t.lit = true;
+              playTone(660, 'triangle', 0.12, 0.12, 880);
+              addScore(300, t.x + 28, t.y + 18, t.color);
+              spawnBurst(t.x + t.w, t.y + t.h / 2, t.color, 10, 170);
+              if (dropTargets.every(dt => dt.lit)) {
+                dropTargets.forEach(dt => dt.lit = false);
+                activateMultiball(120, 260);
+              }
+            } else {
+              playTone(440, 'sine', 0.06, 0.08);
+              addScore(100, t.x + 28, t.y + 18, t.color);
+            }
+          }
+        }
+
+        // Right Multiplier Targets
+        for (const t of rightTargets) {
+          const res = collideCircleSegment(b, t.x + t.w / 2, t.y, t.x + t.w / 2, t.y + t.h, t.w / 2, 0.9, 120);
+          if (res.hit) {
+            t.flash = 1;
+            if (!t.lit) {
+              t.lit = true;
+              playTone(587.33, 'triangle', 0.12, 0.12, 783.99);
+              addScore(300, t.x - 24, t.y + 18, t.color);
+              spawnBurst(t.x, t.y + t.h / 2, t.color, 10, 170);
+              if (rightTargets.every(rt => rt.lit)) {
+                rightTargets.forEach(rt => rt.lit = false);
+                multiplier = Math.min(5, multiplier + 1);
+                playMultiballSfx();
+                addPopup(202, 410, `MULTIPLIER x${multiplier + scoreMultBonus}!`, '#00ff9d', 17);
+                updateHud();
+              }
+            } else {
+              playTone(400, 'sine', 0.06, 0.08);
+              addScore(100, t.x - 24, t.y + 18, t.color);
+            }
+          }
+        }
+
+        // Spinner trigger (pass-through)
+        if (!b.inShooter && Math.abs(b.y - spinner.y) < 10 && Math.abs(b.x - spinner.x) < spinner.w * 0.6) {
+          if (Math.abs(b.vy) > 120 && spinner.spinVel < 8) {
+            spinner.spinVel = 24;
+            playTone(784, 'sine', 0.06, 0.07, 1046);
+            addScore(150, spinner.x, spinner.y - 14, '#00f0ff');
+          }
+        }
+      }
+    }
+
+    // Ball-to-Ball collisions
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const a = balls[i], b = balls[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        const minD = BALL_R * 2;
+        if (dist < minD && dist > 0.0001) {
+          const nx = dx / dist, ny = dy / dist;
+          const overlap = (minD - dist) * 0.5;
+          a.x -= nx * overlap; a.y -= ny * overlap;
+          b.x += nx * overlap; b.y += ny * overlap;
+          const rvx = b.vx - a.vx, rvy = b.vy - a.vy;
+          const vn = rvx * nx + rvy * ny;
+          if (vn < 0) {
+            const imp = -(1 + 0.9) * vn * 0.5;
+            a.vx -= imp * nx; a.vy -= imp * ny;
+            b.vx += imp * nx; b.vy += imp * ny;
+          }
+        }
+      }
+    }
+
+    // Update trails & check drained balls
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+      b.trail.push({ x: b.x, y: b.y });
+      if (b.trail.length > 10) b.trail.shift();
+
+      if (b.y > H + 26) {
+        balls.splice(i, 1);
+        if (balls.length === 0) {
+          if (ballSaverTimer > 0) {
+            // Saved! Respawn directly into playfield top!
+            playMultiballSfx();
+            addPopup(202, 460, 'BALL SAVED!', '#00ff9d', 18);
+            balls.push({ x: 202, y: 80, vx: (Math.random() - 0.5) * 140, vy: 80, inShooter: false, trail: [], powerFlash: 1 });
+          } else {
+            playDrainSfx();
+            ballsLeft -= 1;
+            multiplier = 1;
+            comboCount = 0;
+            if (ballsLeft <= 0) {
+              updateHud();
+              gameOver();
+              return;
+            } else {
+              centerShieldHits = centerShieldMax;
+              spawnShooterBall();
+              addPopup(202, 480, `남은 공: ${ballsLeft}`, '#ff6aa8', 17);
+              updateHud();
+            }
+          }
+        } else {
+          updateHud();
+        }
+      }
+    }
+
+    // Particles, popups, lightning arcs
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.96; p.vy *= 0.96;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = popups.length - 1; i >= 0; i--) {
+      const pp = popups[i];
+      pp.y -= 32 * dt;
+      pp.life -= dt;
+      if (pp.life <= 0) popups.splice(i, 1);
+    }
+    for (let i = lightningArcs.length - 1; i >= 0; i--) {
+      lightningArcs[i].life -= dt;
+      if (lightningArcs[i].life <= 0) lightningArcs.splice(i, 1);
+    }
+  }
+
+  function gameOver() {
+    running = false;
+    modalTitle.textContent = 'GAME OVER';
+    modalDesc.textContent = `최종 점수 ${score.toLocaleString()}점 · BOSS ${stage} 도달!`;
+    bestLine.textContent = `최고 기록: ${bestScore.toLocaleString()}점`;
+    startBtn.textContent = '다시 플레이 ▶';
+    startOverlay.classList.remove('hidden');
+  }
+
+  // Rendering
+  function render() {
+    ctx.save();
+    if (shakeTimer > 0) {
+      const sx = (Math.random() - 0.5) * shakeMag * 2;
+      const sy = (Math.random() - 0.5) * shakeMag * 2;
+      ctx.translate(sx, sy);
+    }
+
+    // Background grid
+    ctx.fillStyle = '#08091b';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.055)';
+    ctx.lineWidth = 1;
+    for (let x = 20; x < W; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 20; y < H; y += 32) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Table lane markings & Ball Saver badge
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '800 11px sans-serif';
+    if (ballSaverTimer > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.014);
+      ctx.fillStyle = `rgba(0, 255, 157, ${0.4 + 0.5 * pulse})`;
+      ctx.fillText(`🛡️ BALL SAVER ${Math.ceil(ballSaverTimer)}s`, 202, 608);
+    } else if (comboCount >= 3) {
+      ctx.fillStyle = 'rgba(255, 190, 11, 0.85)';
+      ctx.fillText(`🔥 ${comboCount} COMBO`, 202, 608);
+    }
+    ctx.restore();
+
+    // Walls
+    ctx.lineCap = 'round';
+    for (const w of walls) {
+      ctx.beginPath();
+      ctx.moveTo(w[0], w[1]);
+      ctx.lineTo(w[2], w[3]);
+      ctx.lineWidth = w[5] === 'arch' || w[5] === 'wall' ? 4 : 3;
+      ctx.strokeStyle = w[5] === 'inlane' ? 'rgba(0, 240, 255, 0.65)'
+        : w[5] === 'divider' ? 'rgba(184, 77, 255, 0.7)'
+        : 'rgba(99, 179, 237, 0.55)';
+      ctx.stroke();
+    }
+
+    // Plunger Spring
+    const compress = plungerCharge * 38;
+    const springTop = 702 + compress;
+    ctx.strokeStyle = plungerCharging ? '#ff007b' : '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(LANE_X - 10, springTop);
+    ctx.lineTo(LANE_X + 10, springTop);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 0, 123, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const sy = springTop + ((726 - springTop) * i) / 6;
+      const sx = LANE_X + (i % 2 === 0 ? -7 : 7);
+      if (i === 0) ctx.moveTo(LANE_X, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    // Center Shield
+    if (centerShieldHits > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(174, 718); ctx.lineTo(230, 718);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Slingshots
+    for (const sl of slingshots) {
+      ctx.save();
+      ctx.strokeStyle = sl.flash > 0 ? '#ffffff' : '#00ff9d';
+      ctx.shadowColor = '#00ff9d';
+      ctx.shadowBlur = sl.flash > 0 ? 18 : 8;
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(sl.x1, sl.y1); ctx.lineTo(sl.x2, sl.y2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // Spinner
+    ctx.save();
+    ctx.translate(spinner.x, spinner.y);
+    const scaleY = Math.max(0.2, Math.abs(Math.cos(spinner.angle)));
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-spinner.w / 2, 0);
+    ctx.lineTo(spinner.w / 2, 0);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
+    ctx.fillRect(-spinner.w / 2 + 3, -5 * scaleY, spinner.w - 6, 10 * scaleY);
+    ctx.restore();
+
+    // Drop Targets (Left & Right)
+    [...dropTargets, ...rightTargets].forEach(t => {
+      ctx.save();
+      ctx.fillStyle = t.lit ? t.color : 'rgba(20, 24, 54, 0.9)';
+      ctx.strokeStyle = t.flash > 0 ? '#fff' : t.color;
+      ctx.lineWidth = 2;
+      if (t.lit || t.flash > 0) {
+        ctx.shadowColor = t.color; ctx.shadowBlur = 12;
+      }
+      ctx.fillRect(t.x, t.y, t.w, t.h);
+      ctx.strokeRect(t.x, t.y, t.w, t.h);
+      ctx.fillStyle = t.lit ? '#060612' : t.color;
+      ctx.font = '900 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h / 2);
+      ctx.restore();
+    });
+
+    // Boss Core
+    if (boss) {
+      ctx.save();
+      const pulse = 1 + 0.05 * Math.sin(boss.phase * 2);
+      ctx.translate(boss.x, boss.y);
+      ctx.shadowColor = boss.color;
+      ctx.shadowBlur = boss.flash > 0 ? 28 : 16;
+
+      // Outer hexagon ring
+      ctx.strokeStyle = boss.flash > 0 ? '#ffffff' : boss.color;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i + boss.phase * 0.4;
+        const px = Math.cos(a) * boss.r * pulse;
+        const py = Math.sin(a) * boss.r * pulse;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = boss.flash > 0 ? 'rgba(255,255,255,0.4)' : 'rgba(18, 16, 44, 0.92)';
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner core
+      ctx.beginPath();
+      ctx.arc(0, 0, boss.r * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = boss.color;
+      ctx.fill();
+
+      // Boss HP arc & label
+      const hpRatio = Math.max(0, boss.hp / boss.maxHp);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(-36, boss.r + 8, 72, 7);
+      ctx.fillStyle = boss.color;
+      ctx.fillRect(-36, boss.r + 8, 72 * hpRatio, 7);
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${boss.name} (${Math.max(0, Math.ceil(boss.hp))})`, 0, -boss.r - 8);
+      ctx.restore();
+    }
+
+    // Bumpers
+    for (const bp of bumpers) {
+      ctx.save();
+      const sc = 1 + bp.flash * 0.16;
+      ctx.translate(bp.x, bp.y);
+      ctx.scale(sc, sc);
+      ctx.shadowColor = bp.color;
+      ctx.shadowBlur = bp.flash > 0 ? 24 : 12;
+      ctx.beginPath();
+      ctx.arc(0, 0, bp.r, 0, Math.PI * 2);
+      ctx.fillStyle = bp.flash > 0 ? '#ffffff' : 'rgba(15, 20, 48, 0.95)';
+      ctx.fill();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = bp.color;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, bp.r * 0.52, 0, Math.PI * 2);
+      ctx.fillStyle = bp.color;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Lightning Arcs
+    for (const arc of lightningArcs) {
+      ctx.save();
+      ctx.strokeStyle = arc.color;
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = arc.life / 0.16;
+      ctx.beginPath();
+      ctx.moveTo(arc.x1, arc.y1);
+      const mx = (arc.x1 + arc.x2) / 2 + (Math.random() - 0.5) * 26;
+      const my = (arc.y1 + arc.y2) / 2 + (Math.random() - 0.5) * 26;
+      ctx.lineTo(mx, my);
+      ctx.lineTo(arc.x2, arc.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Flippers
+    const drawFlipper = (px, py, ang, active) => {
+      const tx = px + Math.cos(ang) * FLIPPER_LEN;
+      const ty = py + Math.sin(ang) * FLIPPER_LEN;
+      ctx.save();
+      ctx.strokeStyle = active ? '#00f0ff' : '#e2e8f0';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = active ? 18 : 8;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 15;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx, ty); ctx.stroke();
+
+      ctx.strokeStyle = active ? '#ffffff' : '#7928ca';
+      ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.restore();
+    };
+    drawFlipper(LEFT_PIVOT.x, LEFT_PIVOT.y, leftAngle, leftPressed);
+    drawFlipper(RIGHT_PIVOT.x, RIGHT_PIVOT.y, rightAngle, rightPressed);
+
+    // Balls + Neon Trails
+    for (const b of balls) {
+      for (let i = 0; i < b.trail.length; i++) {
+        const pt = b.trail[i];
+        const a = ((i + 1) / b.trail.length) * 0.35;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, BALL_R * ((i + 1) / b.trail.length) * 0.85, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 240, 255, ${a})`;
+        ctx.fill();
+      }
+      ctx.save();
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 16;
+      const grad = ctx.createRadialGradient(b.x - 3, b.y - 3, 2, b.x, b.y, BALL_R);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.55, '#a8f8ff');
+      grad.addColorStop(1, '#00b4d8');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Particles
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Popups
+    for (const pp of popups) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, pp.life / pp.maxLife);
+      ctx.fillStyle = pp.color;
+      ctx.font = `900 ${pp.size}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(pp.text, pp.x, pp.y);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // Main loop
+  let lastT = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.033, (now - lastT) / 1000);
+    lastT = now;
+    if (running) stepPhysics(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // Input handlers
+  function setLeft(v) {
+    if (v && !leftPressed && running && !paused) playFlipperSfx();
+    leftPressed = v;
+    leftBtn.classList.toggle('active', v);
+  }
+  function setRight(v) {
+    if (v && !rightPressed && running && !paused) playFlipperSfx();
+    rightPressed = v;
+    rightBtn.classList.toggle('active', v);
+  }
+  function startCharge() {
+    ensureAudio();
+    if (!running || paused) return;
+    if (balls.some(b => b.inShooter)) {
+      plungerCharging = true;
+      launchBtn.classList.add('active');
+    } else {
+      doNudge();
+    }
+  }
+  function releaseCharge() {
+    if (!plungerCharging) return;
+    plungerCharging = false;
+    launchBtn.classList.remove('active');
+    launchShooterBalls(Math.max(0.35, plungerCharge));
+    plungerCharge = 0;
+    updateHud();
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'KeyZ') {
+      ensureAudio(); setLeft(true);
+    } else if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.code === 'Slash') {
+      ensureAudio(); setRight(true);
+    } else if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'Enter') {
+      if (running && !paused) { e.preventDefault(); startCharge(); }
+    } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+      doNudge();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'KeyZ') setLeft(false);
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.code === 'Slash') setRight(false);
+    else if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'Enter') releaseCharge();
+  });
+
+  // Button touch/pointer controls
+  const bindHold = (el, onDown, onUp) => {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); ensureAudio(); onDown(); });
+    el.addEventListener('pointerup', e => { e.preventDefault(); onUp(); });
+    el.addEventListener('pointercancel', () => onUp());
+    el.addEventListener('pointerleave', () => onUp());
+  };
+  bindHold(leftBtn, () => setLeft(true), () => setLeft(false));
+  bindHold(rightBtn, () => setRight(true), () => setRight(false));
+  bindHold(launchBtn, startCharge, releaseCharge);
+
+  // Direct canvas touch (left half = left flipper, right half = right flipper, shooter lane = launch)
+  const activeTouches = new Map();
+  function syncCanvasTouches() {
+    let l = false, r = false;
+    for (const side of activeTouches.values()) {
+      if (side === 'L') l = true;
+      if (side === 'R') r = true;
+    }
+    setLeft(l); setRight(r);
+  }
+  canvas.addEventListener('pointerdown', e => {
+    if (!running || paused) return;
+    ensureAudio();
+    const rect = canvas.getBoundingClientRect();
+    const rx = (e.clientX - rect.left) / rect.width;
+    const ry = (e.clientY - rect.top) / rect.height;
+    if (rx > 0.85 && ry > 0.65 && balls.some(b => b.inShooter)) {
+      activeTouches.set(e.pointerId, 'S');
+      startCharge();
+    } else if (rx < 0.5) {
+      activeTouches.set(e.pointerId, 'L');
+      syncCanvasTouches();
+    } else {
+      activeTouches.set(e.pointerId, 'R');
+      syncCanvasTouches();
+    }
+  });
+  const endCanvasTouch = e => {
+    const kind = activeTouches.get(e.pointerId);
+    if (!kind) return;
+    activeTouches.delete(e.pointerId);
+    if (kind === 'S') releaseCharge();
+    else syncCanvasTouches();
+  };
+  canvas.addEventListener('pointerup', endCanvasTouch);
+  canvas.addEventListener('pointercancel', endCanvasTouch);
+
+  pauseBtn.addEventListener('click', () => {
+    if (!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? '▶' : '⏸';
+  });
+
+  startBtn.addEventListener('click', () => {
+    ensureAudio();
+    startOverlay.classList.add('hidden');
+    resetGame();
+  });
+
+  spawnBoss(1);
+  spawnShooterBall();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
