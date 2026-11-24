@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>네온 코어 드롭: 퓨전 랩 (Neon Core Drop)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #060712;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    touch-action: none;
+  }
+  #app {
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    width: 100%; height: 100%; padding: 8px 10px 10px;
+    background: radial-gradient(circle at 50% 25%, #121536 0%, #060712 72%);
+  }
+  .hud {
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    z-index: 5;
+  }
+  .hud-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    background: rgba(15, 20, 44, 0.88);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.14);
+  }
+  .pill.score { border-color: rgba(0, 240, 255, 0.55); color: #00f0ff; }
+  .pill.combo { border-color: rgba(255, 190, 11, 0.65); color: #ffbe0b; }
+  .pill.best { border-color: rgba(184, 77, 255, 0.5); color: #d8a7ff; }
+  .hud-right { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(18, 22, 46, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+
+  .stage-wrap {
+    position: relative;
+    flex: 1;
+    width: 100%; max-width: 480px;
+    min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    margin: 4px 0;
+  }
+  canvas {
+    border-radius: 16px;
+    border: 1.5px solid rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 28px rgba(0, 240, 255, 0.16), inset 0 0 28px rgba(0, 0, 0, 0.65);
+    background: #080a19;
+    display: block;
+    cursor: crosshair;
+  }
+
+  .controls {
+    width: 100%; max-width: 480px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    z-index: 5;
+  }
+  .act-btn {
+    height: 48px; border-radius: 12px;
+    border: 1.5px solid rgba(0, 240, 255, 0.45);
+    background: linear-gradient(180deg, rgba(20, 28, 60, 0.94), rgba(10, 14, 34, 0.96));
+    color: #e2e8f0; font-weight: 800; font-size: 13px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.08s, border-color 0.15s, opacity 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .act-btn span.sub { font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 1px; }
+  .act-btn.hold { border-color: rgba(184, 77, 255, 0.6); }
+  .act-btn.shake { border-color: rgba(255, 190, 11, 0.6); }
+  .act-btn.purge { border-color: rgba(255, 0, 123, 0.65); }
+  .act-btn.ready { box-shadow: 0 0 14px rgba(255, 190, 11, 0.35); }
+  .act-btn.purge.ready { box-shadow: 0 0 16px rgba(255, 0, 123, 0.5); border-color: #ff007b; }
+  .act-btn.active-mode { background: linear-gradient(180deg, rgba(255, 0, 123, 0.45), rgba(80, 10, 45, 0.9)); border-color: #ff4fa3; }
+  .act-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+  .act-btn:not(:disabled):active { transform: scale(0.96); }
+
+  .tier-bar {
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 3px 6px; margin-bottom: 4px;
+    background: rgba(12, 16, 36, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    gap: 3px;
+  }
+  .tier-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; color: #060712;
+    flex-shrink: 0;
+  }
+
+  .overlay {
+    position: absolute; inset: 0;
+    background: rgba(6, 7, 18, 0.88);
+    backdrop-filter: blur(8px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 22px; text-align: center; z-index: 20;
+    border-radius: 16px;
+  }
+  .overlay.hidden { display: none; }
+  .tag {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+    color: #00f0ff; margin-bottom: 6px;
+  }
+  .overlay h1 {
+    font-size: 28px; font-weight: 900; margin-bottom: 8px;
+    background: linear-gradient(135deg, #00f0ff, #ff007b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .overlay p {
+    font-size: 13px; color: #cbd5e1; line-height: 1.55; max-width: 340px; margin-bottom: 14px;
+  }
+  .rules {
+    background: rgba(18, 24, 52, 0.85);
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    border-radius: 12px; padding: 12px 14px;
+    font-size: 12px; color: #cbd5e1; line-height: 1.65;
+    text-align: left; max-width: 350px; margin-bottom: 16px;
+  }
+  .best-line {
+    font-size: 13px; font-weight: 800; color: #ffbe0b; margin-bottom: 14px;
+  }
+  .start-btn {
+    background: linear-gradient(135deg, #00f0ff, #ff007b);
+    border: none; border-radius: 12px; color: #fff;
+    font-size: 16px; font-weight: 900; padding: 13px 30px;
+    cursor: pointer; box-shadow: 0 0 22px rgba(0, 240, 255, 0.45);
+  }
+  .start-btn:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="hud-left">
+      <div class="pill score">★ <span id="scoreEl">0</span></div>
+      <div class="pill combo" id="comboPill">x1</div>
+      <div class="pill best">🏆 <span id="bestEl">0</span></div>
+    </div>
+    <div class="hud-right">
+      <button class="icon-btn" id="soundBtn" title="소리 켜기/끄기">🔊</button>
+      <button class="icon-btn" id="pauseBtn" title="일시정지">⏸</button>
+    </div>
+  </div>
+
+  <div class="tier-bar" id="tierBar" title="합체 진화 순서"></div>
+
+  <div class="stage-wrap" id="stageWrap">
+    <canvas id="game"></canvas>
+
+    <div class="overlay" id="startOverlay">
+      <div class="tag">DAY 8 · CYBER FUSION PUZZLE</div>
+      <h1>네온 코어 드롭</h1>
+      <p>같은 등급의 네온 코어를 떨어뜨려 합체시키고, 연쇄 퓨전 콤보로 최고 등급 싱귤래리티 코어를 완성하세요!</p>
+      <div class="rules">
+        1. <b>조준 &amp; 드롭</b>: 화면을 터치·드래그(또는 ←/→, Space)해 원하는 위치에 코어 투하!<br>
+        2. <b>연쇄 퓨전</b>: 같은 코어가 닿으면 상위 코어로 진화하며 콤보 배율 증가!<br>
+        3. <b>홀드(C)</b>: 지금 코어를 보관하고 다음 코어와 교체 가능.<br>
+        4. <b>셰이크(Q) &amp; 플라즈마 소거(E)</b>: 콤보로 게이지를 모아 막힌 코어를 흔들거나 소형 코어 제거!
+      </div>
+      <div class="best-line" id="startBest">최고 기록: 0점</div>
+      <button class="start-btn" id="startBtn">퓨전 랩 가동 ▶</button>
+    </div>
+
+    <div class="overlay hidden" id="endOverlay">
+      <div class="tag">REACTOR OVERLOAD</div>
+      <h1 id="endTitle">과부하 종료!</h1>
+      <p id="endStats">최종 점수: 0점</p>
+      <div class="best-line" id="endBest">최고 기록: 0점</div>
+      <button class="start-btn" id="restartBtn">다시 도전 ▶</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="act-btn hold" id="holdBtn">
+      <span>🔄 홀드 <small>(C)</small></span>
+      <span class="sub" id="holdSub">비어 있음</span>
+    </button>
+    <button class="act-btn shake" id="shakeBtn" disabled>
+      <span>⚡ 셰이크 <small>(Q)</small></span>
+      <span class="sub" id="shakeSub">충전 0%</span>
+    </button>
+    <button class="act-btn purge" id="purgeBtn" disabled>
+      <span>🔥 소거 <small>(E)</small></span>
+      <span class="sub" id="purgeSub">충전 0%</span>
+    </button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const stageWrap = document.getElementById('stageWrap');
+
+  const scoreEl = document.getElementById('scoreEl');
+  const comboPill = document.getElementById('comboPill');
+  const bestEl = document.getElementById('bestEl');
+  const startBest = document.getElementById('startBest');
+  const endBest = document.getElementById('endBest');
+  const endTitle = document.getElementById('endTitle');
+  const endStats = document.getElementById('endStats');
+
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const soundBtn = document.getElementById('soundBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  const holdBtn = document.getElementById('holdBtn');
+  const holdSub = document.getElementById('holdSub');
+  const shakeBtn = document.getElementById('shakeBtn');
+  const shakeSub = document.getElementById('shakeSub');
+  const purgeBtn = document.getElementById('purgeBtn');
+  const purgeSub = document.getElementById('purgeSub');
+  const tierBar = document.getElementById('tierBar');
+
+  const BEST_KEY = 'neon_core_drop_best_v1';
+  let bestScore = Number(localStorage.getItem(BEST_KEY) || 0);
+  bestEl.textContent = bestScore.toLocaleString();
+  startBest.textContent = `최고 기록: ${bestScore.toLocaleString()}점`;
+
+  // Logical playfield dimensions
+  const W = 400;
+  const H = 560;
+  const WALL = 14;
+  const FLOOR_Y = H - 14;
+  const DANGER_Y = 98;
+  const SPAWN_Y = 46;
+
+  const TIERS = [
+    { name: '스파크',   r: 14, color: '#00f0ff', glow: 'rgba(0,240,255,0.65)',  pts: 10,   sides: 3 },
+    { name: '쿼크',     r: 19, color: '#38bdf8', glow: 'rgba(56,189,248,0.65)', pts: 25,   sides: 4 },
+    { name: '펄스',     r: 25, color: '#34d399', glow: 'rgba(52,211,153,0.65)', pts: 55,   sides: 5 },
+    { name: '플라즈마', r: 31, color: '#a3e635', glow: 'rgba(163,230,53,0.65)', pts: 100,  sides: 6 },
+    { name: '솔라',     r: 38, color: '#ffbe0b', glow: 'rgba(255,190,11,0.65)', pts: 180,  sides: 7 },
+    { name: '마그마',   r: 45, color: '#fb7185', glow: 'rgba(251,113,133,0.65)',pts: 300,  sides: 8 },
+    { name: '네뷸라',   r: 53, color: '#ff007b', glow: 'rgba(255,0,123,0.7)',   pts: 500,  sides: 5, star: true },
+    { name: '퀀텀',     r: 62, color: '#c084fc', glow: 'rgba(192,132,252,0.7)', pts: 800,  sides: 6, star: true },
+    { name: '노바',     r: 72, color: '#f472b6', glow: 'rgba(244,114,182,0.75)',pts: 1300, sides: 8, star: true },
+    { name: '싱귤래리티',r: 84, color: '#ffffff', glow: 'rgba(0,240,255,0.9)',  pts: 2500, sides: 12, star: true }
+  ];
+
+  // Render tier guide bar
+  TIERS.forEach((t, idx) => {
+    const d = document.createElement('div');
+    d.className = 'tier-dot';
+    d.style.background = t.color;
+    d.style.boxShadow = `0 0 8px ${t.glow}`;
+    d.textContent = idx + 1;
+    d.title = `Lv.${idx + 1} ${t.name}`;
+    tierBar.appendChild(d);
+  });
+
+  // Audio Engine (Web Audio API)
+  let audioCtx = null;
+  let muted = false;
+  const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+  }
+
+  function playTone(freq, dur, type = 'sine', vol = 0.12, slide = 1) {
+    if (muted || !audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (slide !== 1) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), now + dur);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + dur);
+    } catch (_) {}
+  }
+
+  function playDropSound() { playTone(210, 0.09, 'triangle', 0.1, 0.55); }
+  function playMergeSound(tier, combo) {
+    const base = PENTA[Math.min(PENTA.length - 1, tier)];
+    const mult = 1 + Math.min(0.35, combo * 0.04);
+    playTone(base * mult, 0.22, 'sine', 0.15, 1.15);
+    playTone(base * mult * 1.5, 0.16, 'triangle', 0.08, 1.05);
+  }
+  function playShakeSound() { playTone(95, 0.26, 'sawtooth', 0.11, 0.5); }
+  function playPurgeSound() { playTone(740, 0.2, 'sawtooth', 0.12, 0.25); }
+
+  soundBtn.addEventListener('click', () => {
+    muted = !muted;
+    soundBtn.textContent = muted ? '🔇' : '🔊';
+  });
+
+  // Resize canvas crisply to fit stageWrap
+  function resizeCanvas() {
+    const rect = stageWrap.getBoundingClientRect();
+    const scale = Math.min(rect.width / W, rect.height / H);
+    const cw = Math.floor(W * scale);
+    const ch = Math.floor(H * scale);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.style.width = `${cw}px`;
+    canvas.style.height = `${ch}px`;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // Game State
+  let orbs = [];
+  let particles = [];
+  let floats = [];
+  let running = false;
+  let paused = false;
+  let gameOver = false;
+
+  let score = 0;
+  let combo = 0;
+  let comboTimer = 0;
+  let maxTierReached = 0;
+  let mergeCount = 0;
+
+  let shakeCharge = 40; // start with some charge
+  let purgeCharge = 0;
+  let purgeMode = false;
+
+  let aimX = W / 2;
+  let currentTier = 0;
+  let nextTier = 1;
+  let holdTier = null;
+  let holdUsedThisTurn = false;
+  let dropCooldown = 0;
+  let dangerTimer = 0;
+  let screenShake = 0;
+  let nextOrbId = 1;
+
+  function pickDropTier() {
+    const r = Math.random();
+    if (r < 0.36) return 0;
+    if (r < 0.66) return 1;
+    if (r < 0.86) return 2;
+    if (r < 0.96) return 3;
+    return 4;
+  }
+
+  function updateHUD() {
+    scoreEl.textContent = score.toLocaleString();
+    const mult = 1 + Math.floor(combo / 2) * 0.5;
+    comboPill.textContent = combo > 1 ? `x${mult.toFixed(1)} (${combo}연쇄)` : 'x1';
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem(BEST_KEY, String(bestScore));
+      bestEl.textContent = bestScore.toLocaleString();
+    }
+
+    holdSub.textContent = holdTier === null ? '비어 있음' : `Lv.${holdTier + 1} ${TIERS[holdTier].name}`;
+
+    const sPct = Math.min(100, Math.floor(shakeCharge));
+    shakeSub.textContent = sPct >= 100 ? '사용 가능!' : `충전 ${sPct}%`;
+    shakeBtn.disabled = !running || paused || gameOver || sPct < 100;
+    shakeBtn.classList.toggle('ready', sPct >= 100);
+
+    const pPct = Math.min(100, Math.floor(purgeCharge));
+    purgeSub.textContent = purgeMode ? '대상 터치!' : (pPct >= 100 ? '사용 가능!' : `충전 ${pPct}%`);
+    purgeBtn.disabled = !running || paused || gameOver || pPct < 100;
+    purgeBtn.classList.toggle('ready', pPct >= 100);
+    purgeBtn.classList.toggle('active-mode', purgeMode);
+  }
+
+  function resetGame() {
+    orbs = [];
+    particles = [];
+    floats = [];
+    score = 0;
+    combo = 0;
+    comboTimer = 0;
+    maxTierReached = 0;
+    mergeCount = 0;
+    shakeCharge = 50;
+    purgeCharge = 0;
+    purgeMode = false;
+    aimX = W / 2;
+    currentTier = pickDropTier();
+    nextTier = pickDropTier();
+    holdTier = null;
+    holdUsedThisTurn = false;
+    dropCooldown = 0;
+    dangerTimer = 0;
+    screenShake = 0;
+    paused = false;
+    gameOver = false;
+    running = true;
+    pauseBtn.textContent = '⏸';
+    startOverlay.classList.add('hidden');
+    endOverlay.classList.add('hidden');
+    updateHUD();
+  }
+
+  function spawnParticles(x, y, color, count = 16, speed = 180) {
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const sp = speed * (0.45 + Math.random() * 0.75);
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 20,
+        r: 2.2 + Math.random() * 3.2,
+        life: 0.45 + Math.random() * 0.25,
+        maxLife: 0.7,
+        color
+      });
+    }
+  }
+
+  function addFloat(x, y, text, color = '#fff') {
+    floats.push({ x, y, text, color, life: 0.9, maxLife: 0.9 });
+  }
+
+  function clampAim(x, tier) {
+    const r = TIERS[tier].r;
+    return Math.max(WALL + r + 2, Math.min(W - WALL - r - 2, x));
+  }
+
+  function dropOrb() {
+    if (!running || paused || gameOver || dropCooldown > 0 || purgeMode) return;
+    ensureAudio();
+    const t = TIERS[currentTier];
+    const x = clampAim(aimX, currentTier);
+    orbs.push({
+      id: nextOrbId++,
+      tier: currentTier,
+      x,
+      y: SPAWN_Y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: 40,
+      ang: Math.random() * Math.PI * 2,
+      angV: (Math.random() - 0.5) * 0.8,
+      age: 0,
+      merged: false
+    });
+    playDropSound();
+    currentTier = nextTier;
+    nextTier = pickDropTier();
+    holdUsedThisTurn = false;
+    dropCooldown = 0.38;
+    updateHUD();
+  }
+
+  function doHold() {
+    if (!running || paused || gameOver || holdUsedThisTurn) return;
+    ensureAudio();
+    if (holdTier === null) {
+      holdTier = currentTier;
+      currentTier = nextTier;
+      nextTier = pickDropTier();
+    } else {
+      const tmp = currentTier;
+      currentTier = holdTier;
+      holdTier = tmp;
+    }
+    holdUsedThisTurn = true;
+    aimX = clampAim(aimX, currentTier);
+    playTone(520, 0.08, 'sine', 0.09, 1.25);
+    updateHUD();
+  }
+
+  function doShake() {
+    if (!running || paused || gameOver || shakeCharge < 100) return;
+    ensureAudio();
+    shakeCharge = 0;
+    screenShake = 12;
+    playShakeSound();
+    for (const o of orbs) {
+      o.vy -= 210 + Math.random() * 140;
+      o.vx += (Math.random() - 0.5) * 260;
+      o.angV += (Math.random() - 0.5) * 6;
+    }
+    addFloat(W / 2, H / 2, '⚡ 펄스 셰이크!', '#ffbe0b');
+    updateHUD();
+  }
+
+  function togglePurge() {
+    if (!running || paused || gameOver || purgeCharge < 100) return;
+    purgeMode = !purgeMode;
+    updateHUD();
+  }
+
+  function tryPurgeAt(px, py) {
+    if (!purgeMode) return false;
+    let target = null;
+    let bestD = Infinity;
+    for (const o of orbs) {
+      const r = TIERS[o.tier].r;
+      const d = Math.hypot(o.x - px, o.y - py);
+      if (d <= r + 14 && d < bestD) {
+        bestD = d;
+        target = o;
+      }
+    }
+    if (target) {
+      ensureAudio();
+      const t = TIERS[target.tier];
+      spawnParticles(target.x, target.y, '#ff007b', 22, 220);
+      addFloat(target.x, target.y, '🔥 소거!', '#ff007b');
+      orbs = orbs.filter(o => o.id !== target.id);
+      purgeCharge = 0;
+      purgeMode = false;
+      screenShake = 6;
+      playPurgeSound();
+      updateHUD();
+      return true;
+    }
+    return false;
+  }
+
+  // Input handlers
+  function getCanvasPos(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / rect.width) * W,
+      y: ((clientY - rect.top) / rect.height) * H
+    };
+  }
+
+  let pointerDown = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!running || paused || gameOver) return;
+    ensureAudio();
+    const pos = getCanvasPos(e.clientX, e.clientY);
+    if (purgeMode) {
+      tryPurgeAt(pos.x, pos.y);
+      return;
+    }
+    pointerDown = true;
+    aimX = clampAim(pos.x, currentTier);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!running || paused || gameOver || purgeMode) return;
+    const pos = getCanvasPos(e.clientX, e.clientY);
+    aimX = clampAim(pos.x, currentTier);
+  });
+
+  window.addEventListener('pointerup', () => {
+    if (pointerDown) {
+      pointerDown = false;
+      dropOrb();
+    }
+  });
+
+  const keys = {};
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+      e.preventDefault();
+      if (!e.repeat) dropOrb();
+    }
+    if (e.code === 'KeyC' && !e.repeat) doHold();
+    if (e.code === 'KeyQ' && !e.repeat) doShake();
+    if (e.code === 'KeyE' && !e.repeat) togglePurge();
+    if (e.code === 'KeyP' && !e.repeat && running && !gameOver) {
+      paused = !paused;
+      pauseBtn.textContent = paused ? '▶' : '⏸';
+      updateHUD();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  holdBtn.addEventListener('click', doHold);
+  shakeBtn.addEventListener('click', doShake);
+  purgeBtn.addEventListener('click', togglePurge);
+
+  pauseBtn.addEventListener('click', () => {
+    if (!running || gameOver) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? '▶' : '⏸';
+    updateHUD();
+  });
+
+  startBtn.addEventListener('click', () => { ensureAudio(); resetGame(); });
+  restartBtn.addEventListener('click', () => { ensureAudio(); resetGame(); });
+
+  // Physics & Merge Step
+  function stepPhysics(dt) {
+    const SUB = 6;
+    const sdt = dt / SUB;
+    const GRAV = 980;
+    const REST = 0.24;
+
+    for (let s = 0; s < SUB; s++) {
+      for (const o of orbs) {
+        o.vy += GRAV * sdt;
+        o.vx *= 0.998;
+        o.vy *= 0.998;
+        o.x += o.vx * sdt;
+        o.y += o.vy * sdt;
+        o.ang += o.angV * sdt;
+        o.angV *= 0.992;
+
+        const r = TIERS[o.tier].r;
+        if (o.x - r < WALL) {
+          o.x = WALL + r;
+          o.vx = Math.abs(o.vx) * REST;
+        } else if (o.x + r > W - WALL) {
+          o.x = W - WALL - r;
+          o.vx = -Math.abs(o.vx) * REST;
+        }
+        if (o.y + r > FLOOR_Y) {
+          o.y = FLOOR_Y - r;
+          o.vy = -Math.abs(o.vy) * REST;
+          o.vx *= 0.94;
+          o.angV = o.vx / Math.max(10, r);
+        }
+      }
+
+      // Circle-circle collisions & merge check
+      const merges = [];
+      for (let i = 0; i < orbs.length; i++) {
+        const a = orbs[i];
+        if (a.merged) continue;
+        const ra = TIERS[a.tier].r;
+        for (let j = i + 1; j < orbs.length; j++) {
+          const b = orbs[j];
+          if (b.merged) continue;
+          const rb = TIERS[b.tier].r;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const distSq = dx * dx + dy * dy;
+          const minDist = ra + rb;
+          if (distSq < minDist * minDist) {
+            if (a.tier === b.tier && a.tier < TIERS.length - 1) {
+              a.merged = true;
+              b.merged = true;
+              merges.push([a, b]);
+              continue;
+            }
+            const dist = Math.sqrt(distSq) || 0.001;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const overlap = minDist - dist;
+            const ma = ra * ra;
+            const mb = rb * rb;
+            const totalM = ma + mb;
+            a.x -= nx * overlap * (mb / totalM) * 0.85;
+            a.y -= ny * overlap * (mb / totalM) * 0.85;
+            b.x += nx * overlap * (ma / totalM) * 0.85;
+            b.y += ny * overlap * (ma / totalM) * 0.85;
+
+            const rvx = b.vx - a.vx;
+            const rvy = b.vy - a.vy;
+            const vn = rvx * nx + rvy * ny;
+            if (vn < 0) {
+              const imp = -(1 + REST) * vn / (1 / ma + 1 / mb);
+              a.vx -= (imp / ma) * nx;
+              a.vy -= (imp / ma) * ny;
+              b.vx += (imp / mb) * nx;
+              b.vy += (imp / mb) * ny;
+
+              // Tangential friction -> spin
+              const tx = -ny, ty = nx;
+              const vt = rvx * tx + rvy * ty;
+              a.angV += vt * 0.015;
+              b.angV -= vt * 0.015;
+            }
+          }
+        }
+      }
+
+      if (merges.length > 0) {
+        orbs = orbs.filter(o => !o.merged);
+        for (const [a, b] of merges) {
+          const nt = a.tier + 1;
+          const tInfo = TIERS[nt];
+          const mx = clampAim((a.x + b.x) / 2, nt);
+          const my = Math.min(FLOOR_Y - tInfo.r, (a.y + b.y) / 2);
+          orbs.push({
+            id: nextOrbId++,
+            tier: nt,
+            x: mx,
+            y: my,
+            vx: (a.vx + b.vx) * 0.35,
+            vy: Math.min(-45, (a.vy + b.vy) * 0.35),
+            ang: 0,
+            angV: (Math.random() - 0.5) * 2,
+            age: 0.4,
+            merged: false
+          });
+
+          combo += 1;
+          comboTimer = 2.2;
+          mergeCount += 1;
+          if (nt > maxTierReached) maxTierReached = nt;
+
+          const mult = 1 + Math.floor(combo / 2) * 0.5;
+          const gained = Math.round(tInfo.pts * mult);
+          score += gained;
+
+          shakeCharge = Math.min(100, shakeCharge + 10 + nt * 3);
+          purgeCharge = Math.min(100, purgeCharge + 8 + nt * 2.5);
+          screenShake = Math.min(10, 2 + nt * 0.9);
+
+          spawnParticles(mx, my, tInfo.color, 16 + nt * 2, 160 + nt * 18);
+          addFloat(mx, my - 10, `+${gained}${combo > 1 ? ` x${mult.toFixed(1)}` : ''}`, tInfo.color);
+          playMergeSound(nt, combo);
+        }
+        updateHUD();
+      }
+    }
+  }
+
+  function triggerGameOver() {
+    gameOver = true;
+    running = false;
+    playTone(150, 0.45, 'sawtooth', 0.14, 0.4);
+    endTitle.textContent = maxTierReached >= 9 ? '싱귤래리티 달성!' : '과부하 종료!';
+    endStats.textContent = `최종 점수: ${score.toLocaleString()}점 · 최대 코어: Lv.${maxTierReached + 1} ${TIERS[maxTierReached].name} · 총 합체 ${mergeCount}회`;
+    endBest.textContent = `최고 기록: ${bestScore.toLocaleString()}점`;
+    endOverlay.classList.remove('hidden');
+    updateHUD();
+  }
+
+  function drawPoly(x, y, r, sides, ang, isStar) {
+    ctx.beginPath();
+    if (isStar) {
+      for (let i = 0; i < sides * 2; i++) {
+        const rad = i % 2 === 0 ? r : r * 0.52;
+        const a = ang + (Math.PI * i) / sides;
+        const px = x + Math.cos(a) * rad;
+        const py = y + Math.sin(a) * rad;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+    } else {
+      for (let i = 0; i < sides; i++) {
+        const a = ang + (Math.PI * 2 * i) / sides;
+        const px = x + Math.cos(a) * r;
+        const py = y + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+    }
+    ctx.closePath();
+  }
+
+  function drawOrb(x, y, tier, ang, alpha = 1) {
+    const t = TIERS[tier];
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = t.glow;
+    ctx.shadowBlur = 14;
+
+    const grad = ctx.createRadialGradient(x - t.r * 0.3, y - t.r * 0.3, t.r * 0.1, x, y, t.r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.28, t.color);
+    grad.addColorStop(1, '#0d1026');
+
+    ctx.beginPath();
+    ctx.arc(x, y, t.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = t.color;
+    ctx.stroke();
+
+    // Inner geometric sigil
+    ctx.shadowBlur = 0;
+    drawPoly(x, y, t.r * 0.56, t.sides, ang, t.star);
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // Tier number
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${Math.max(10, Math.round(t.r * 0.48))}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(tier + 1), x, y + 1);
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.save();
+    if (screenShake > 0.2) {
+      ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+    }
+
+    // Background grid
+    ctx.fillStyle = '#080a19';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let gx = WALL; gx < W - WALL; gx += 32) {
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+    }
+    for (let gy = 32; gy < H; gy += 32) {
+      ctx.beginPath(); ctx.moveTo(WALL, gy); ctx.lineTo(W - WALL, gy); ctx.stroke();
+    }
+
+    // Chamber walls & floor
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(WALL, 70);
+    ctx.lineTo(WALL, FLOOR_Y);
+    ctx.lineTo(W - WALL, FLOOR_Y);
+    ctx.lineTo(W - WALL, 70);
+    ctx.stroke();
+
+    // Danger laser line
+    const dangerAlpha = dangerTimer > 0 ? 0.55 + Math.sin(performance.now() * 0.015) * 0.35 : 0.35;
+    ctx.save();
+    ctx.setLineDash([7, 6]);
+    ctx.strokeStyle = `rgba(255, 0, 100, ${dangerAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(WALL + 2, DANGER_Y);
+    ctx.lineTo(W - WALL - 2, DANGER_Y);
+    ctx.stroke();
+    ctx.restore();
+
+    if (dangerTimer > 0.2) {
+      ctx.fillStyle = '#ff3b7f';
+      ctx.font = '800 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`⚠️ 과부하 경고 ${(2.5 - dangerTimer).toFixed(1)}s`, W / 2, DANGER_Y - 8);
+    }
+
+    // Next Orb badge (top-right inside canvas)
+    ctx.fillStyle = 'rgba(14, 18, 42, 0.85)';
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(W - 88, 10, 74, 48, 10);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '800 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NEXT', W - 51, 22);
+    const nr = Math.min(13, TIERS[nextTier].r * 0.65);
+    ctx.beginPath();
+    ctx.arc(W - 51, 40, nr, 0, Math.PI * 2);
+    ctx.fillStyle = TIERS[nextTier].color;
+    ctx.fill();
+    ctx.fillStyle = '#060712';
+    ctx.font = '900 10px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(nextTier + 1), W - 51, 40);
+
+    // Aim guide & current orb
+    if (running && !gameOver && dropCooldown <= 0 && !purgeMode) {
+      const ax = clampAim(aimX, currentTier);
+      ctx.save();
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.28)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ax, SPAWN_Y);
+      ctx.lineTo(ax, FLOOR_Y);
+      ctx.stroke();
+      ctx.restore();
+      drawOrb(ax, SPAWN_Y, currentTier, 0, 0.92);
+    }
+
+    // Orbs
+    for (const o of orbs) {
+      drawOrb(o.x, o.y, o.tier, o.ang, 1);
+      if (purgeMode) {
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, TIERS[o.tier].r + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff007b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // Particles
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Floating texts
+    for (const f of floats) {
+      ctx.globalAlpha = Math.max(0, f.life / f.maxLife);
+      ctx.fillStyle = f.color;
+      ctx.font = '900 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+
+    if (paused) {
+      ctx.fillStyle = 'rgba(6,7,18,0.65)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = '900 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('일시정지', W / 2, H / 2);
+    }
+
+    ctx.restore();
+  }
+
+  let lastTs = performance.now();
+  function loop(ts) {
+    const dt = Math.min(0.033, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    if (running && !paused && !gameOver) {
+      if (keys.left) aimX = clampAim(aimX - 270 * dt, currentTier);
+      if (keys.right) aimX = clampAim(aimX + 270 * dt, currentTier);
+
+      if (dropCooldown > 0) dropCooldown = Math.max(0, dropCooldown - dt);
+      if (comboTimer > 0) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) { combo = 0; updateHUD(); }
+      }
+      if (screenShake > 0) screenShake = Math.max(0, screenShake - dt * 28);
+
+      stepPhysics(dt);
+
+      // Check danger line (settled orbs older than 1.2s)
+      let overLine = false;
+      for (const o of orbs) {
+        o.age += dt;
+        if (o.age > 1.2 && o.y - TIERS[o.tier].r < DANGER_Y) {
+          overLine = true;
+          break;
+        }
+      }
+      if (overLine) {
+        dangerTimer += dt;
+        if (dangerTimer >= 2.5) triggerGameOver();
+      } else {
+        dangerTimer = Math.max(0, dangerTimer - dt * 2);
+      }
+
+      // Update particles & floats
+      for (const p of particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 280 * dt;
+        p.life -= dt;
+      }
+      particles = particles.filter(p => p.life > 0);
+
+      for (const f of floats) {
+        f.y -= 36 * dt;
+        f.life -= dt;
+      }
+      floats = floats.filter(f => f.life > 0);
+    }
+
+    render();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
